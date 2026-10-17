@@ -278,7 +278,8 @@ function campWeeks(camp){
       mon = addD(mon, 7);
     }
     let type='regular', sub=null;
-    // 考试周暂未确定，确定后在此恢复 exam 标记
+    // 第7周采用已确认的考试流程，实际考试日期、场次仍按本期预约。
+    if(n===7){ type='exam'; sub='考试流程周'; }
     if(n===12){ type='close'; sub='结营周'; }
     weeks.push({ key:`week-${n}`, label:`第${n}周`, short:String(n), type, sub, mon, n });
     mon = addD(mon, 7);
@@ -303,7 +304,7 @@ function pendingSection(){
   const open = document.querySelector('.sop-pending')?.open;
   return `<details class="sop-pending"${open ? ' open' : ''}>
     <summary>待确认事项 · ${SOP_PENDING.length} 项</summary>
-    <p>以下安排在 SOP 中存在冲突或仍标为待定，暂不计入正式待办、逾期和完成率。</p>
+    <p>以下事项尚待进一步讨论，暂不计入正式待办、逾期和完成率。</p>
     <ul>${SOP_PENDING.map(item => `<li><strong>${esc(item.t)}</strong><br>${esc(item.d)}</li>`).join('')}</ul>
   </details>`;
 }
@@ -319,7 +320,7 @@ function taskHtml(task, term, w, opts={}){
     .map(key => `<a class="task-link" href="${esc(LINKS[key].url)}" target="_blank" rel="noopener noreferrer">${esc(LINKS[key].text)}</a>`).join(' · ');
   const tag = task.tag ? `<span class="task-tag ${task.tag}">${task.tag==='exam'?'考试':task.tag==='close'?'结营':'开营'}</span>` : '';
   const time = task.time ? `<span class="task-time">${task.time}</span>` : '';
-  const late = opts.overdue && !isDone
+  const late = opts.overdue && !isDone && !task.follow
     ? `<span class="task-late">逾期${opts.lateDay ? ' · '+opts.lateDay : ''}</span>` : '';
   const campTag = opts.campTag ? `<span class="follow-camp">${opts.campTag}</span>` : '';
   return `<div class="task${isDone?' done':''}">
@@ -468,7 +469,9 @@ function todaySection(campsData, today){
   // 跟进池：已到期的 follow 任务（寄证书、寄奖品等），勾掉前一直显示（含已结营的期）
   const followHtml = campsData.flatMap(({camp, weeks}) =>
     weeks.flatMap(w => w.mon > today ? [] :
-      weekTasks(w).filter(t => t.follow && !done[taskId(camp.term, w, t)])
+      weekTasks(w).filter(t => t.follow &&
+        (typeof t.day !== 'number' || addD(w.mon, (t.day+6)%7) <= today) &&
+        !done[taskId(camp.term, w, t)])
         .map(t => taskHtml(t, camp.term, w, {campTag:`第${camp.term}期`}))
     )
   ).join('');
@@ -480,7 +483,7 @@ function todaySection(campsData, today){
     const all = weekTasks(w);
     // 本周已过去的天里没勾掉的任务 → 逾期，排最前
     const overdueHtml = all
-      .filter(t => typeof t.day === 'number' && (t.day+6)%7 < todayPos && !done[taskId(camp.term, w, t)])
+      .filter(t => !t.follow && typeof t.day === 'number' && (t.day+6)%7 < todayPos && !done[taskId(camp.term, w, t)])
       .map(t => taskHtml(t, camp.term, w, {overdue:true, lateDay:'周'+WD[t.day]})).join('');
     const items = all.filter(t => t.day === today.getDay() && !t.follow)
       .sort((a,b) => timeMin(a) - timeMin(b));
@@ -705,6 +708,7 @@ function render(){
     <div class="legend">
       <div class="leg-item"><div class="leg-dot" style="background:var(--open-bg)"></div>开营周</div>
       <div class="leg-item"><div class="leg-dot" style="background:var(--regular-bg)"></div>常规周</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--exam-bg)"></div>考试流程周</div>
       <div class="leg-item"><div class="leg-dot" style="background:var(--close-bg)"></div>结营周</div>
       <div class="leg-item"><div class="leg-dot" style="background:var(--rest-bg)"></div>休息周（长假）</div>
     </div>
