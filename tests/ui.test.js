@@ -35,13 +35,16 @@ function server(){
   throw new Error('Unexpected RPC '+name);
  }};
 }
-async function windowFor(backend,{loggedIn=true,legacy=false}={}){
+async function windowFor(backend,{loggedIn=true,legacy=false,legacyDone={}}={}){
  const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
  const dom=new JSDOM(html,{url:'https://internal.aurange.cn/test/#9:2030-02-03',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window;w.alert=()=>{};w.confirm=()=>true;w.HTMLElement.prototype.scrollIntoView=function(){};
  w.eval(fs.readFileSync(path.join(root,'config.js'),'utf8'));
  const prefix=w.SCHEDULE_CONFIG.program==='ai'?'ai':'crawler';
- if(legacy)w.localStorage.setItem(prefix+'-camps-v1',JSON.stringify([{term:8,openDate:'2030-01-06',skips:[]}]));
+ if(legacy){
+  w.localStorage.setItem(prefix+'-camps-v1',JSON.stringify([{term:8,openDate:'2030-01-06',skips:[]}]));
+  w.localStorage.setItem(prefix+'-camps-done-v1',JSON.stringify(legacyDone));
+ }
  const session=loggedIn?{user:{id:'member',email:'member@example.test'}}:null;
  const client={rpc:(name,p)=>backend.rpc(name,p),auth:{getSession:async()=>({data:{session}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},
   channel:()=>({on(){return this},subscribe(){return this}}),removeChannel(){}};
@@ -80,5 +83,118 @@ test('logged out visitors do not fetch or render team data',async()=>{
  try{
   assert.ok(page.w.document.getElementById('login-email'));
   assert.equal(backend.calls.length,0);assert.equal(page.w.document.querySelector('.camp'),null);
+  assert.equal(page.w.document.querySelector('.sop-pending'),null);
+ }finally{page.close();}
+});
+
+async function createCamp(backend,skips=[]){
+ const result=await backend.rpc('save_schedule_camp',{p_program:'ai',p_id:null,p_term:1,p_open_date:'2030-01-06',p_skips:skips});
+ return result.data;
+}
+
+test('graduation milestones shift with holidays and closing week retains weekly work',async()=>{
+ const backend=server();await createCamp(backend,[3,8]);const page=await windowFor(backend);
+ try{
+  const w=page.w,weeks=w.campWeeks({term:1,openDate:'2030-01-06',skips:[3,8]});
+  const closing=weeks.find(week=>week.n===12);
+  assert.equal(w.fmtS(closing.mon),'4/8');
+  w.setView(1,weeks.findIndex(week=>week.n===12));
+  const task=title=>[...w.document.querySelectorAll('#camp-1 .task')].find(el=>el.querySelector('.task-t').textContent.includes(title));
+  assert.ok(task('发布课程及打卡等更新提醒'),'closing week still includes weekly course reminders');
+  assert.ok(task('结束答疑问卷收集，整理后发给答疑老师'));
+  assert.ok(task('收集好评/成果案例 5 条至案例文档'));
+  assert.match(task('发送毕业作品提交与展示意愿问卷').closest('.daygrp').querySelector('.day-hdr').textContent,/周一 4\/8/);
+  const deadline=task('截止收集毕业作品与展示意愿');
+  assert.match(deadline.closest('.daygrp').querySelector('.day-hdr').textContent,/周三 4\/10/);
+  assert.equal(deadline.querySelector('.task-time').textContent,'23:59前');
+  assert.match(task('每队评选并公布 1–2 位毕业展示代表').closest('.daygrp').querySelector('.day-hdr').textContent,/周五 4\/12/);
+  assert.ok(task('各小队代表进行毕业作品展示'));
+  const today=w.document.createElement('div');
+  today.innerHTML=w.todaySection([{camp:{term:1},weeks,pos:weeks.indexOf(closing)}],closing.sun);
+  const todayText=today.textContent;
+  assert.ok(todayText.indexOf('结营典礼直播') < todayText.indexOf('各小队代表进行毕业作品展示'));
+  assert.ok(todayText.indexOf('各小队代表进行毕业作品展示') < todayText.indexOf('群发优惠券与推广返现说明'),'live presentations precede post-live referrals in today ordering');
+  const labels=[...w.document.querySelectorAll('#camp-1 .task-t')].map(el=>el.textContent);
+  assert.equal(new Set(labels).size,labels.length,'closing work has no duplicate tasks');
+  w.setView(1,weeks.findIndex(week=>week.n===11));
+  assert.ok(task('提醒学员启动毕业设计'));
+  assert.equal(task('截止收集毕业作品与展示意愿'),undefined,'submission belongs to closing week');
+ }finally{page.close();}
+});
+
+test('renamed SOP tasks retain cloud completion and update the existing task key',async()=>{
+ const backend=server(),camp=await createCamp(backend);
+ const cases=[
+  {week:2,day:5,old:'收集好评/成果案例 3 条至案例文档',title:'收集好评/成果案例 5 条至案例文档'},
+  {week:12,day:'all',old:'邮寄实物奖励及发放虚拟奖励',title:'发放虚拟奖励'},
+  {week:0,key:'open',day:6,old:'鹅圈子新建小队并把成员移入对应小队',title:'鹅圈子新建小队并把成员移入对应小队'},
+ ];
+ for(const item of cases){
+  await backend.rpc('set_schedule_task',{p_program:'ai',p_camp_id:camp.id,p_task_key:`${item.key || 'week-'+item.week}|${item.day}|${item.old}`,p_version:0,p_completed:true});
+ }
+ const page=await windowFor(backend);
+ try{
+  const w=page.w;
+  for(const item of cases){
+   w.setView(1,item.week);
+   const task=[...w.document.querySelectorAll('#camp-1 .task')].find(el=>el.querySelector('.task-t').textContent.includes(item.title));
+   assert.ok(task,`renders updated task: ${item.title}`);
+   const button=task.querySelector('.ckb');assert.equal(button.getAttribute('aria-pressed'),'true');
+   if(item.key==='open') assert.match(task.closest('.daygrp').querySelector('.day-hdr').textContent,/周日/,'circle setup moves to opening Sunday');
+   await w.toggleDone(Number(button.getAttribute('onclick').match(/\d+/)[0]));
+   const write=backend.calls.filter(([name])=>name==='set_schedule_task').at(-1)[1];
+   assert.equal(write.p_task_key,`${item.key || 'week-'+item.week}|${item.day}|${item.old}`);
+   assert.equal(write.p_version,1);assert.equal(write.p_completed,false);
+  }
+  const snapshot=await backend.rpc('schedule_snapshot',{p_program:'ai'});
+  assert.equal(snapshot.data.tasks.length,cases.length,'content and day changes never create a second completion record');
+ }finally{page.close();}
+});
+
+test('legacy import keeps renamed SOP task completions and the original browser backup',async()=>{
+ const legacyDone={
+  '8|第2周|5|收集好评/成果案例 3 条至案例文档':1,
+  '8|第12周|all|邮寄实物奖励及发放虚拟奖励':1,
+  '8|开营周|6|鹅圈子新建小队并把成员移入对应小队':1,
+ };
+ const page=await windowFor(server(),{legacy:true,legacyDone});
+ try{
+  const w=page.w,before=w.localStorage.getItem('ai-camps-done-v1');
+  const entry=w.legacyEntries('local')[0];
+  assert.deepEqual(copy(entry.completed_tasks).sort(),[
+   'week-12|all|邮寄实物奖励及发放虚拟奖励',
+   'week-2|5|收集好评/成果案例 3 条至案例文档',
+   'open|6|鹅圈子新建小队并把成员移入对应小队',
+  ].sort());
+  await w.importLegacy('local');
+  w.setView(8,2);
+  const task=[...w.document.querySelectorAll('#camp-8 .task')].find(el=>el.textContent.includes('收集好评/成果案例 5 条至案例文档'));
+  assert.equal(task.querySelector('.ckb').getAttribute('aria-pressed'),'true');
+  w.setView(8,0);
+  const circle=[...w.document.querySelectorAll('#camp-8 .task')].find(el=>el.textContent.includes('鹅圈子新建小队并把成员移入对应小队'));
+  assert.equal(circle.querySelector('.ckb').getAttribute('aria-pressed'),'true');
+  assert.match(circle.closest('.daygrp').querySelector('.day-hdr').textContent,/周日/);
+  assert.equal(w.localStorage.getItem('ai-camps-done-v1'),before);
+ }finally{page.close();}
+});
+
+test('pending SOP matters are visible without camps and never become scheduled tasks',async()=>{
+ const page=await windowFor(server());
+ try{
+  const w=page.w,pending=w.document.querySelector('.sop-pending');
+  assert.ok(pending);assert.match(pending.querySelector('summary').textContent,/待确认事项/);
+  assert.equal(pending.querySelectorAll('.ckb,[data-write]').length,0);
+  pending.open=true;w.render();
+  assert.equal(w.document.querySelector('.sop-pending').open,true,'sync renders preserve the expanded reading state');
+  assert.match(pending.textContent,/考试/);assert.match(pending.textContent,/老学员推荐/);
+  assert.match(pending.textContent,/第 5 周/);assert.match(pending.textContent,/第 7 周/);
+  const weeks=w.campWeeks({term:1,openDate:'2030-01-06',skips:[3]});
+  assert.equal(weeks.some(week=>week.type==='exam'),false,'tentative exam week is not activated');
+  const tasks=weeks.flatMap(week=>w.weekTasks(week));
+  assert.equal(tasks.some(task=>/考试|实名认证|报考信息/.test(task.t)),false,'tentative exam work stays out of todo counts');
+  assert.equal(tasks.some(task=>/8月31日|10月15日/.test(JSON.stringify(task))),false,'old date examples never become recurring deadlines');
+  const referral=tasks.find(task=>task.t==='群发优惠券与推广返现说明');
+  assert.equal(referral.day,0);assert.equal(referral.time,'直播后');
+  assert.match(referral.d,/300/);assert.match(referral.d,/200/);assert.match(referral.d,/退款/);
  }finally{page.close();}
 });

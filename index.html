@@ -167,6 +167,13 @@ button{font-family:inherit}
 .task-link{font-size:12px;color:#2563eb;text-decoration:none;font-weight:500}
 .task-link:hover{text-decoration:underline}
 
+.sop-pending{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:20px;color:#475569;font-size:12px}
+.sop-pending summary{cursor:pointer;font-weight:700;color:#92400e}
+.sop-pending p{margin:10px 0}
+.sop-pending ul{padding-left:20px}
+.sop-pending li{margin:10px 0;line-height:1.7}
+.sop-pending strong{color:#334155}
+
 /* ── Empty state ── */
 .empty{background:#fff;border:1px dashed #cbd5e1;border-radius:14px;padding:48px 20px;text-align:center;color:#94a3b8;font-size:13px}
 .empty .btn{margin-top:14px}
@@ -233,7 +240,8 @@ function esc(value){ return String(value == null ? '' : value).replace(/[&<>"']/
 function editable(){ return !!(cloud && cloud.state.phase === 'ready' && cloud.state.online && !cloud.state.busy); }
 function report(message){ const el=document.getElementById('notice'); el.textContent=message; }
 function writeError(error){ report(error && error.message || '操作没有完成，请刷新后核对。'); }
-function taskId(term, w, task){ const camp=camps.find(c => c.term===term); return `${camp ? camp.id : ''}|${w.key}|${task.day}|${task.t}`; }
+function taskKey(w, task){ return `${w.key}|${task.idDay ?? task.day}|${task.id || task.t}`; }
+function taskId(term, w, task){ const camp=camps.find(c => c.term===term); return `${camp ? camp.id : ''}|${taskKey(w, task)}`; }
 let REG = [];
 function ckId(id){ REG.push(id); return REG.length - 1; }
 async function toggleDone(i){
@@ -250,6 +258,7 @@ function timeMin(task){
   if(task.time.includes('上午')) return 9*60;
   if(task.time.includes('下午')) return 14*60;
   if(task.time.includes('直播前')) return 18*60;
+  if(task.time.includes('直播中')) return 20*60;
   if(task.time.includes('晚')) return 19*60;
   if(task.time.includes('直播后')) return 21*60+30;
   return 9999;
@@ -285,10 +294,18 @@ function campPos(weeks, today){
 function weekTasks(w){
   if(w.type==='open') return SOP_OPEN;
   if(w.type==='rest') return SOP_REST;
-  if(w.n===12) return SOP_CLOSING;
   // 第1周还没有"上周"，跳过标了 notW1 的回顾性任务（榜单、批改、督促）
   const base = w.n===1 ? SOP_REGULAR.filter(t => !t.notW1) : SOP_REGULAR;
-  return base.concat(SOP_EXTRAS[w.n] || []);
+  return base.concat(SOP_EXTRAS[w.n] || [], w.n===12 ? SOP_CLOSING : []);
+}
+
+function pendingSection(){
+  const open = document.querySelector('.sop-pending')?.open;
+  return `<details class="sop-pending"${open ? ' open' : ''}>
+    <summary>待确认事项 · ${SOP_PENDING.length} 项</summary>
+    <p>以下安排在 SOP 中存在冲突或仍标为待定，暂不计入正式待办、逾期和完成率。</p>
+    <ul>${SOP_PENDING.map(item => `<li><strong>${esc(item.t)}</strong><br>${esc(item.d)}</li>`).join('')}</ul>
+  </details>`;
 }
 
 // ── Render: task list of one week ────────────────────────────────────────────
@@ -298,8 +315,8 @@ const DAY_LABEL = { 1:'周一',2:'周二',3:'周三',4:'周四',5:'周五',6:'�
 function taskHtml(task, term, w, opts={}){
   const id = taskId(term, w, task);
   const isDone = !!done[id];
-  const link = task.link && LINKS[task.link]
-    ? ` <a class="task-link" href="${LINKS[task.link].url}" target="_blank">${LINKS[task.link].text}</a>` : '';
+  const link = (task.links || (task.link ? [task.link] : [])).filter(key => LINKS[key])
+    .map(key => `<a class="task-link" href="${esc(LINKS[key].url)}" target="_blank" rel="noopener noreferrer">${esc(LINKS[key].text)}</a>`).join(' · ');
   const tag = task.tag ? `<span class="task-tag ${task.tag}">${task.tag==='exam'?'考试':task.tag==='close'?'结营':'开营'}</span>` : '';
   const time = task.time ? `<span class="task-time">${task.time}</span>` : '';
   const late = opts.overdue && !isDone
@@ -615,8 +632,8 @@ function legacyEntries(source){
   return legacy[source].map(c => {
     const same=legacy.local.some(local => JSON.stringify(local)===JSON.stringify(c));
     const keys=(source==='local' || same) ? campWeeks(c).flatMap(w => weekTasks(w)
-      .filter(t => legacy.done[`${c.term}|${w.label}|${t.day}|${t.t}`])
-      .map(t => `${w.key}|${t.day}|${t.t}`)) : [];
+      .filter(t => legacy.done[`${c.term}|${w.label}|${t.idDay ?? t.day}|${t.id || t.t}`])
+      .map(t => taskKey(w, t))) : [];
     return {term:c.term,open_date:c.openDate,skips:c.skips,completed_tasks:[...new Set(keys)]};
   });
 }
@@ -691,7 +708,7 @@ function render(){
       <div class="leg-item"><div class="leg-dot" style="background:var(--close-bg)"></div>结营周</div>
       <div class="leg-item"><div class="leg-dot" style="background:var(--rest-bg)"></div>休息周（长假）</div>
     </div>
-    <div class="wrap">${body}</div>`;
+    <div class="wrap">${pendingSection()}${body}</div>`;
   document.querySelectorAll('[data-write]').forEach(button=>{button.disabled=!editable() || button.hasAttribute('data-unavailable');});
 }
 function bootCloud(){
