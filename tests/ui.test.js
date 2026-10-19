@@ -271,6 +271,24 @@ test('preparation starts one calendar month before opening and preserves teachin
  }finally{page.close();}
 });
 
+test('today pointer stays on its calendar day across morning and evening',async()=>{
+ const page=await windowFor(server());
+ try{
+  const w=page.w,camps=[{term:3,openDate:'2026-09-27',skips:[]},{term:4,openDate:'2026-11-01',skips:[]}];
+  const data=camps.map(camp=>({camp,weeks:w.campWeeks(camp),pos:0}));
+  const marker=date=>{
+   const el=w.document.createElement('div');el.innerHTML=w.timeline(data,date);
+   return el.querySelector('.tl-today');
+  };
+  const positions=[0,6,11,12,18,23].map(hour=>marker(new w.Date(2026,9,19,hour,30)).style.left);
+  assert.equal(new Set(positions).size,1,'changing only the hour must not move today to tomorrow');
+  assert.notEqual(marker(new w.Date(2026,9,20,0,30)).style.left,positions[0],'the pointer advances on the next calendar day');
+  const start=data[0].weeks[0].mon,end=w.addD(data.at(-1).weeks.at(-1).sun,1);
+  assert.equal(marker(w.addD(start,-1)),null);
+  assert.equal(marker(end),null);
+ }finally{page.close();}
+});
+
 test('three per-camp preparation tasks persist from the preparation start until completed',async()=>{
  const backend=server(),camp=await createCamp(backend),page=await windowFor(backend);
  try{
