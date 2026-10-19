@@ -2,6 +2,8 @@
 
 查看营期进度、每周任务和完成情况。
 
+安卓原生版的构建、安装、通知设置与飞书跳转说明见 [Android README](android/README.md)。
+
 线上地址保持为 [AI 编程训练营排期](https://internal.aurange.cn/ai-camp-schedule/)。
 
 ## 开发

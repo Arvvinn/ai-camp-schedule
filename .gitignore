@@ -3,3 +3,11 @@ node_modules/
 __pycache__/
 .env
 .env.*
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/local.properties
+android/signing.properties
+*.jks
+*.keystore
+artifacts/android/
