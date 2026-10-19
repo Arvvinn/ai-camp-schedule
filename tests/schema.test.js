@@ -1,6 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
+const vm=require('node:vm');
 const { PGlite }=require(process.env.PGLITE_MODULE || '@electric-sql/pglite');
 
 test('database permissions, program isolation, stale edits, imports and shared task progress',async()=>{
@@ -43,6 +44,13 @@ test('database permissions, program isolation, stale edits, imports and shared t
   ]);
   assert.deepEqual(imported.inserted,[3]);assert.deepEqual(imported.skipped,[2]);
   assert.equal((await snapshot('ai')).camps.find(c=>c.id===ai.id).open_date,'2030-01-06');
+  const prep=vm.runInNewContext(fs.readFileSync(require.resolve('../data.js'),'utf8')+';SOP_PREP');
+  const importedCamp=(await snapshot('ai')).camps.find(c=>c.term===3);
+  for(const item of prep){
+   const key=`${item.idWeek || 'prep'}|${item.idDay ?? item.day}|${item.id || item.t}`;
+   const saved=await setTask('ai',importedCamp.id,key,0,true);
+   assert.equal(saved.completed,true,'preparation tasks save under the existing database constraint');
+  }
   await assert.rejects(importCamps('ai',[
    {term:4,open_date:'2030-02-03',skips:[],completed_tasks:[]},
    {term:5,open_date:'2030-02-03',skips:[],completed_tasks:['invalid-key']}

@@ -91,6 +91,12 @@ async function createCamp(backend,skips=[]){
  const result=await backend.rpc('save_schedule_camp',{p_program:'ai',p_id:null,p_term:1,p_open_date:'2030-01-06',p_skips:skips});
  return result.data;
 }
+function showPhase(w,term,key){
+ const camp=w.__test.cloud.state.camps.find(item=>item.term===term);
+ const weeks=w.campWeeks(camp);
+ const index=weeks.findIndex(week=>week.key===key);
+ assert.ok(index>=0,`phase ${key} exists`);w.setView(term,index);
+}
 
 test('graduation milestones shift with holidays and closing week retains weekly work',async()=>{
  const backend=server();await createCamp(backend,[3,8]);const page=await windowFor(backend);
@@ -129,6 +135,8 @@ test('renamed SOP tasks retain cloud completion and update the existing task key
   {week:12,day:'all',old:'邮寄实物奖励及发放虚拟奖励',title:'按本期方案发放结营奖励'},
   {week:2,day:6,old:'结束答疑问卷收集，整理后发给答疑老师',title:'截止答疑问卷收集，整理新增问题并同步老师'},
   {week:0,key:'open',day:6,old:'鹅圈子新建小队并把成员移入对应小队',title:'鹅圈子新建小队并把成员移入对应小队'},
+  {key:'open',viewKey:'prep',day:'all',old:'创建本期课程',title:'建立本期小鹅通圈子与课程'},
+  {key:'open',viewKey:'prep',day:'all',old:'更新本期云空间配套资料',title:'建立本期群资料与云空间'},
  ];
  for(const item of cases){
   await backend.rpc('set_schedule_task',{p_program:'ai',p_camp_id:camp.id,p_task_key:`${item.key || 'week-'+item.week}|${item.day}|${item.old}`,p_version:0,p_completed:true});
@@ -137,11 +145,11 @@ test('renamed SOP tasks retain cloud completion and update the existing task key
  try{
   const w=page.w;
   for(const item of cases){
-   w.setView(1,item.week);
+   showPhase(w,1,item.viewKey || item.key || 'week-'+item.week);
    const task=[...w.document.querySelectorAll('#camp-1 .task')].find(el=>el.querySelector('.task-t').textContent.includes(item.title));
    assert.ok(task,`renders updated task: ${item.title}`);
    const button=task.querySelector('.ckb');assert.equal(button.getAttribute('aria-pressed'),'true');
-   if(item.key==='open') assert.match(task.closest('.daygrp').querySelector('.day-hdr').textContent,/周日/,'circle setup moves to opening Sunday');
+   if(item.day===6 && item.key==='open') assert.match(task.closest('.daygrp').querySelector('.day-hdr').textContent,/周日/,'circle setup moves to opening Sunday');
    await w.toggleDone(Number(button.getAttribute('onclick').match(/\d+/)[0]));
    const write=backend.calls.filter(([name])=>name==='set_schedule_task').at(-1)[1];
    assert.equal(write.p_task_key,`${item.key || 'week-'+item.week}|${item.day}|${item.old}`);
@@ -158,6 +166,8 @@ test('legacy import keeps renamed SOP task completions and the original browser 
   '8|第12周|all|邮寄实物奖励及发放虚拟奖励':1,
   '8|开营周|6|鹅圈子新建小队并把成员移入对应小队':1,
   '8|第2周|6|结束答疑问卷收集，整理后发给答疑老师':1,
+  '8|开营周|all|创建本期课程':1,
+  '8|开营周|all|更新本期云空间配套资料':1,
  };
  const page=await windowFor(server(),{legacy:true,legacyDone});
  try{
@@ -168,14 +178,21 @@ test('legacy import keeps renamed SOP task completions and the original browser 
    'week-2|5|收集好评/成果案例 3 条至案例文档',
    'open|6|鹅圈子新建小队并把成员移入对应小队',
    'week-2|6|结束答疑问卷收集，整理后发给答疑老师',
+   'open|all|创建本期课程',
+   'open|all|更新本期云空间配套资料',
   ].sort());
   await w.importLegacy('local');
-  w.setView(8,2);
+  showPhase(w,8,'week-2');
   const task=[...w.document.querySelectorAll('#camp-8 .task')].find(el=>el.textContent.includes('收集好评/成果案例 5 条至案例文档'));
   assert.equal(task.querySelector('.ckb').getAttribute('aria-pressed'),'true');
   const cutoff=[...w.document.querySelectorAll('#camp-8 .task')].find(el=>el.textContent.includes('截止答疑问卷收集，整理新增问题并同步老师'));
   assert.equal(cutoff.querySelector('.ckb').getAttribute('aria-pressed'),'true');
-  w.setView(8,0);
+  showPhase(w,8,'prep');
+  for(const title of ['建立本期小鹅通圈子与课程','建立本期群资料与云空间']){
+   const moved=[...w.document.querySelectorAll('#camp-8 .task')].find(el=>el.textContent.includes(title));
+   assert.equal(moved.querySelector('.ckb').getAttribute('aria-pressed'),'true');
+  }
+  showPhase(w,8,'open');
   const circle=[...w.document.querySelectorAll('#camp-8 .task')].find(el=>el.textContent.includes('鹅圈子新建小队并把成员移入对应小队'));
   assert.equal(circle.querySelector('.ckb').getAttribute('aria-pressed'),'true');
   assert.match(circle.closest('.daygrp').querySelector('.day-hdr').textContent,/周日/);
@@ -183,16 +200,11 @@ test('legacy import keeps renamed SOP task completions and the original browser 
  }finally{page.close();}
 });
 
-test('only enrollment remains pending while confirmed work becomes scheduled',async()=>{
+test('per-camp enrollment preparation resolves the last global pending item',async()=>{
  const page=await windowFor(server());
  try{
   const w=page.w,pending=w.document.querySelector('.sop-pending');
-  assert.ok(pending);assert.match(pending.querySelector('summary').textContent,/待确认事项 · 1 项/);
-  assert.match(pending.textContent,/入学档案问卷入口/);
-  assert.equal(pending.querySelectorAll('li').length,1);
-  assert.equal(pending.querySelectorAll('.ckb,[data-write]').length,0);
-  pending.open=true;w.render();
-  assert.equal(w.document.querySelector('.sop-pending').open,true,'sync renders preserve the expanded reading state');
+  assert.equal(pending,null,'no empty or resolved pending notice is shown');
   const weeks=w.campWeeks({term:1,openDate:'2030-01-06',skips:[3]});
   assert.equal(weeks.filter(week=>week.type==='exam').length,1);
   assert.equal(weeks.find(week=>week.type==='exam').n,7);
@@ -212,7 +224,7 @@ test('only enrollment remains pending while confirmed work becomes scheduled',as
 test('confirmed weekly handoff and deadlines distinguish teacher access from final question collection',async()=>{
  const backend=server();await createCamp(backend);const page=await windowFor(backend);
  try{
-  const w=page.w;w.setView(1,2);
+  const w=page.w;showPhase(w,1,'week-2');
   const task=title=>[...w.document.querySelectorAll('#camp-1 .task')].find(el=>el.querySelector('.task-t').textContent.includes(title));
   const handoff=task('问卷创建后立即把入口发给答疑老师');
   assert.ok(handoff);assert.match(handoff.closest('.daygrp').textContent,/周五/);
@@ -230,6 +242,56 @@ test('confirmed weekly handoff and deadlines distinguish teacher access from fin
   assert.match(homework.closest('.daygrp').querySelector('.day-hdr').textContent,/周日/);
   assert.equal(homework.querySelector('.task-time').textContent,'24:00');
   assert.match(homework.textContent,/周一00:00/);
+ }finally{page.close();}
+});
+
+test('preparation starts one calendar month before opening and preserves teaching dates',async()=>{
+ const page=await windowFor(server());
+ try{
+  const w=page.w;
+  for(const [open,start] of [['2030-01-06','2029-12-06'],['2028-03-31','2028-02-29'],['2027-03-31','2027-02-28'],['2030-06-03','2030-05-03']]){
+   const weeks=w.campWeeks({term:1,openDate:open,skips:[]}),prep=weeks[0],opening=weeks[1];
+   assert.equal(prep.key,'prep');assert.equal(+prep.mon,+w.parseD(start));
+   assert.equal(opening.key,'open');assert.equal(opening.mon.getDay(),1);
+   assert.equal(+prep.sun,+w.addD(opening.mon,-1));
+   assert.equal(w.campPos(weeks,w.addD(prep.mon,-1)),-1);
+   assert.equal(w.campPos(weeks,prep.mon),0);
+   assert.equal(w.campPos(weeks,prep.sun),0);
+   assert.equal(w.campPos(weeks,opening.mon),1);
+   const first=weeks.find(week=>week.n===1);
+   assert.equal(+first.mon,+w.addD(opening.mon,7));
+   assert.equal(w.campPos(weeks,first.mon),weeks.indexOf(first));
+   assert.equal(w.campPos(weeks,w.addD(weeks.at(-1).sun,1)),weeks.length);
+  }
+  const weeks=w.campWeeks({term:1,openDate:'2030-01-06',skips:[3,8]});
+  const el=w.document.createElement('div');el.innerHTML=w.timeline([{camp:{term:1},weeks,pos:0}],weeks[0].mon);
+  const total=w.dayDiff(weeks[0].mon,w.addD(weeks.at(-1).sun,1));
+  const expected=w.dayDiff(weeks[0].mon,w.addD(weeks[0].sun,1))/total*100;
+  assert.ok(Math.abs(parseFloat(el.querySelector('.tl-seg.prep').style.width)-expected)<0.002,'long preparation segment uses its actual duration');
+ }finally{page.close();}
+});
+
+test('three per-camp preparation tasks persist from the preparation start until completed',async()=>{
+ const backend=server(),camp=await createCamp(backend),page=await windowFor(backend);
+ try{
+  const w=page.w,weeks=w.campWeeks({term:1,openDate:'2030-01-06',skips:[]}),prep=weeks.find(week=>week.key==='prep');
+  assert.ok(prep);showPhase(w,1,'prep');
+  const titles=['新建本期入学档案问卷','建立本期小鹅通圈子与课程','建立本期群资料与云空间'];
+  assert.equal(w.document.querySelectorAll('#camp-1 .task').length,3);
+  for(const title of titles)assert.match(w.document.querySelector('#camp-1').textContent,new RegExp(title));
+  assert.equal(w.document.querySelectorAll('a[href*="/share/base/form/"]').length,0,'old enrollment forms are no longer presented as a shared entry');
+  const today=date=>{
+   const el=w.document.createElement('div');el.innerHTML=w.todaySection([{camp:{term:1},weeks,pos:w.campPos(weeks,date)}],date);return el;
+  };
+  assert.doesNotMatch(today(w.addD(prep.mon,-1)).textContent,/新建本期入学档案问卷/);
+  assert.equal(today(prep.mon).querySelectorAll('.followsec .task').length,3);
+  showPhase(w,1,'open');
+  assert.equal([...w.document.querySelectorAll('#camp-1 .task-t')].some(el=>titles.some(title=>el.textContent.includes(title))),false,'preparation tasks are not duplicated in opening week');
+  showPhase(w,1,'week-1');
+  assert.equal(w.document.querySelectorAll('a[href*="/share/base/form/"]').length,0);
+  assert.match(w.document.querySelector('#camp-1').textContent,/本期.*入学档案/);
+  for(const task of w.weekTasks(prep))await w.__test.cloud.setTask(camp.id+'|'+w.taskKey(prep,task),true);
+  assert.doesNotMatch(today(weeks.find(week=>week.n===1).mon).textContent,/新建本期入学档案问卷|建立本期小鹅通圈子与课程|建立本期群资料与云空间/);
  }finally{page.close();}
 });
 
