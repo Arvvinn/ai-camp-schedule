@@ -38,9 +38,9 @@ import androidx.compose.ui.unit.sp
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                     Surface(color = Color.White, shape = RoundedCornerShape(18.dp), shadowElevation = 2.dp) {
                         Column(Modifier.width(86.dp).padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("${state.today.monthValue} 月", color = Blue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            Text("${state.today.monthValue} 月", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             Text("${state.today.dayOfMonth}", color = Ink, fontSize = 35.sp, lineHeight = 43.sp, fontWeight = FontWeight.Bold)
-                            Text(state.today.format(weekDay), color = Muted, fontSize = 10.sp)
+                            Text(state.today.format(weekDay), color = Muted, fontSize = 12.sp)
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
@@ -63,7 +63,7 @@ import androidx.compose.ui.unit.sp
         item {
             WhiteCard {
                 Text("登录账号", style = MaterialTheme.typography.titleMedium)
-                Text("使用网页版相同的邮箱与密码", fontSize = 11.sp, color = Muted)
+                Text("使用网页版相同的邮箱与密码", fontSize = 12.sp, color = Muted)
                 OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("邮箱") }, singleLine = true,
                     leadingIcon = { AppIcon(Glyph.Mail) }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(), enabled = !state.busy,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next))
@@ -86,7 +86,7 @@ import androidx.compose.ui.unit.sp
                 Text("先看看应用", fontSize = 13.sp); Spacer(Modifier.width(6.dp)); AppIcon(Glyph.ArrowUpRight, tint = Blue, modifier = Modifier.size(14.dp))
             }
             TextButton(onClick = { ExternalLinks.document(context, "https://internal.aurange.cn/ai-camp-schedule/") }, modifier = Modifier.fillMaxWidth()) {
-                Text("打开网页版", color = Muted, fontSize = 11.sp)
+                Text("打开网页版", color = Muted, fontSize = 12.sp)
             }
         }
     }

@@ -18,6 +18,10 @@ import javax.crypto.spec.GCMParameterSpec
 // Durable session/alarm writes happen on IO workers and must finish before the receiver exits.
 @SuppressLint("ApplySharedPref")
 class LocalStore(context: Context) {
+    companion object {
+        // AtomicFile does not lock readers against writers. All stores for this process share the same cache path.
+        private val snapshotLock = Any()
+    }
     private val prefs = context.getSharedPreferences("schedule-private", Context.MODE_PRIVATE)
     private val cache = AtomicFile(File(context.filesDir, "snapshot.json"))
     private val keyAlias = "camp-schedule-session-v1"
@@ -49,18 +53,20 @@ class LocalStore(context: Context) {
         check(prefs.edit().putString("session", blob).commit()) { "无法保存本机登录状态。" }
     }
 
-    @Synchronized fun snapshot(): Snapshot = runCatching {
-        if (session() == null) return Snapshot()
-        NativeJson.snapshot(cache.openRead().bufferedReader().use { it.readText() })
-    }.getOrDefault(Snapshot())
+    @Synchronized fun snapshot(): Snapshot = synchronized(snapshotLock) {
+        runCatching {
+            if (session() == null) return Snapshot()
+            NativeJson.snapshot(cache.openRead().bufferedReader().use { it.readText() })
+        }.getOrDefault(Snapshot())
+    }
 
-    @Synchronized fun snapshot(snapshot: Snapshot) {
+    @Synchronized fun snapshot(snapshot: Snapshot) = synchronized(snapshotLock) {
         val stream = cache.startWrite()
         try { stream.write(NativeJson.snapshot(snapshot).toByteArray(Charsets.UTF_8)); cache.finishWrite(stream) }
         catch (e: Exception) { cache.failWrite(stream); throw e }
     }
 
-    @Synchronized fun clearAccount() {
+    @Synchronized fun clearAccount() = synchronized(snapshotLock) {
         prefs.edit().remove("session").remove("custom").remove("delivered").remove("batch").putBoolean("demo", false).commit()
         cache.delete()
     }

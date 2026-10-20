@@ -4,7 +4,7 @@ import java.time.LocalDate
 
 enum class TaskFilter(val label: String) { ALL("全部"), PENDING("待办"), COMPLETED("已完成") }
 enum class TaskBucket(val label: String) {
-    OVERDUE("待补事项"), TODAY("当天安排"), DAILY("日常事务"), FOLLOW("持续跟进"), COMPLETED("已完成")
+    OVERDUE("逾期事项"), TODAY("当天安排"), DAILY("日常事务"), FOLLOW("持续跟进"), COMPLETED("已完成")
 }
 data class TaskGroup(val bucket: TaskBucket, val tasks: List<TaskOccurrence>)
 

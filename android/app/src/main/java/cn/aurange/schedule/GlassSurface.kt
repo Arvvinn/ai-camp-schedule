@@ -22,12 +22,12 @@ import dev.chrisbanes.haze.*
 
 @OptIn(ExperimentalHazeApi::class)
 @Composable fun GlassSurface(state: HazeState, modifier: Modifier = Modifier,
-                            corner: Int = 28, content: @Composable BoxScope.() -> Unit) {
+                            corner: Int = 24, content: @Composable BoxScope.() -> Unit) {
     val shape = RoundedCornerShape(corner.dp)
-    Box(modifier.shadow(12.dp, shape, ambientColor = Navy.copy(alpha = .12f), spotColor = Navy.copy(alpha = .12f))
+    Box(modifier.shadow(8.dp, shape, ambientColor = Navy.copy(alpha = .10f), spotColor = Navy.copy(alpha = .10f))
         .clip(shape).hazeChild(state) {
             backgroundColor = Canvas
-            tints = listOf(HazeTint(Color(0xFFFAFAF5).copy(alpha = .55f)))
+            tints = listOf(HazeTint(Color.White.copy(alpha = .76f)))
             blurRadius = 22.dp
             noiseFactor = .025f
             fallbackTint = HazeTint(Canvas.copy(alpha = .96f))

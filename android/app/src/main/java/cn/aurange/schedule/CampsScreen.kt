@@ -68,9 +68,9 @@ import androidx.compose.ui.unit.sp
                 items(camps, key = { it.id }) { c ->
                     val current = engine.current(c, state.today)
                     val selected = camp?.id == c.id
-                    Surface(Modifier.width(160.dp).clip(RoundedCornerShape(20.dp)).selectable(selected, role = Role.Tab,
+                    Surface(Modifier.width(160.dp).clip(RoundedCornerShape(16.dp)).selectable(selected, role = Role.Tab,
                         onClick = { selectedCamp = c.id; selectedPhase = null }),
-                        color = if (selected) Lavender else Color.White, shape = RoundedCornerShape(20.dp),
+                        color = if (selected) Lavender else Color.White, shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(1.dp, if (selected) Blue.copy(alpha = .25f) else Line)) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -78,7 +78,7 @@ import androidx.compose.ui.unit.sp
                                 if (selected) AppIcon(Glyph.CircleCheck, tint = Blue, modifier = Modifier.size(16.dp))
                             }
                             PhaseBadge(current, current?.label ?: if (c.openDate > state.today) "未开始" else "已结营")
-                            Text(c.openDate.format(shortDate) + " 开营", fontSize = 10.sp, color = Muted)
+                            Text(c.openDate.format(shortDate) + " 开营", fontSize = 12.sp, color = Muted)
                         }
                     }
                 }
@@ -90,8 +90,8 @@ import androidx.compose.ui.unit.sp
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(phase.label, style = MaterialTheme.typography.titleLarge)
-                            Text("${phase.start.format(shortDate)} — ${phase.end.format(shortDate)}", fontSize = 11.sp, color = Muted, modifier = Modifier.padding(top = 5.dp))
-                            if (camp.skips.isNotEmpty()) Text("本期休息 ${camp.skips.size} 周，课程已顺延", fontSize = 10.sp, color = Muted, modifier = Modifier.padding(top = 5.dp))
+                            Text("${phase.start.format(shortDate)} — ${phase.end.format(shortDate)}", fontSize = 12.sp, color = Muted, modifier = Modifier.padding(top = 5.dp))
+                            if (camp.skips.isNotEmpty()) Text("本期休息 ${camp.skips.size} 周，课程已顺延", fontSize = 12.sp, color = Muted, modifier = Modifier.padding(top = 5.dp))
                         }
                         Box(Modifier.size(42.dp).background(phaseBackground(phase.type), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                             AppIcon(if (phase.type == "prep") Glyph.Book else if (phase.type == "rest") Glyph.Coffee else Glyph.Layers, tint = phaseColor(phase.type))
@@ -101,8 +101,8 @@ import androidx.compose.ui.unit.sp
                         Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(phaseColor(phase.type)))
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("本阶段完成", fontSize = 10.sp, color = Muted)
-                        Text("$done / ${tasks.size}", fontSize = 11.sp, color = phaseColor(phase.type), fontWeight = FontWeight.SemiBold)
+                        Text("本阶段完成", fontSize = 12.sp, color = Muted)
+                        Text("$done / ${tasks.size}", fontSize = 12.sp, color = phaseColor(phase.type), fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -124,7 +124,7 @@ import androidx.compose.ui.unit.sp
                 if (dayTasks.isEmpty()) continue
                 item(key = "${camp.id}-${phase.key}-$day-label") {
                     val label = if (day == "all") "全周 / 日常" else dayTasks.first().date.let { it.format(weekDay) + " · " + it.format(shortDate) }
-                    SectionTitle(label) { Text("${dayTasks.size} 项", fontSize = 10.sp, color = Muted) }
+                    SectionTitle(label) { Text("${dayTasks.size} 项", fontSize = 12.sp, color = Muted) }
                 }
                 items(dayTasks, key = { "camp:${it.id}" }) { task ->
                     TaskCard(task, engine.complete(state.displaySnapshot, task), state.online && !state.busy && !state.demo && task.id !in state.pendingCompletions,

@@ -49,7 +49,7 @@ import java.time.LocalDate
                 .semantics { contentDescription = day.date.format(fullDate) }
                 .selectable(selected, role = Role.Button, onClick = { onDate(day.date) })
                 .heightIn(min = 66.dp).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(day.date.format(weekDay).replace("周", ""), fontSize = 10.sp, color = if (selected) Color.White.copy(alpha = .75f) else Muted)
+                Text(day.date.format(weekDay).replace("周", ""), fontSize = 12.sp, color = if (selected) Color.White else Muted)
                 Text("${day.date.dayOfMonth}", fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
                     color = if (selected) Color.White else Ink, modifier = Modifier.padding(top = 4.dp))
                 Box(Modifier.padding(top = 5.dp).size(3.dp).background(

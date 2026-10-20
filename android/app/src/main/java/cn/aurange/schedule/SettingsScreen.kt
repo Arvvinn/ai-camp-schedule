@@ -42,7 +42,7 @@ import java.time.LocalTime
                     Box(Modifier.size(42.dp).background(Lavender, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) { AppIcon(Glyph.Bell, tint = Blue) }
                     Column(Modifier.weight(1f)) {
                         Text("日程提醒", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        Text(if (state.settings.enabled) "每日汇总与任务时间提醒" else "当前已暂停", color = Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+                        Text(if (state.settings.enabled) "每日汇总与任务时间提醒" else "当前已暂停", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
                     }
                     Switch(checked = state.settings.enabled, onCheckedChange = { model.settings(state.settings.copy(enabled = it)) })
                 }
@@ -84,19 +84,20 @@ import java.time.LocalTime
                     AppIcon(if (state.demo) Glyph.Sparkles else Glyph.Shield, tint = Sage)
                     Column {
                         Text(if (state.demo) "演示预览" else "已登录团队账号", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        Text(if (state.demo) "示例数据，仅供浏览" else state.email, color = Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
+                        Text(if (state.demo) "示例数据，仅供浏览" else state.email, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
-                Text("已同步日程可离线查看和提醒。云端改动需联网同步后生效，打开应用可立即刷新。", color = Muted, fontSize = 11.sp, lineHeight = 20.sp)
-                Text("手机重启后会恢复提醒。系统强行停止应用后，请重新打开一次。", color = Muted, fontSize = 11.sp, lineHeight = 20.sp)
+                Text("已同步日程可离线查看和提醒。云端改动需联网同步后生效，打开应用可立即刷新。", color = Muted, fontSize = 12.sp, lineHeight = 20.sp)
+                Text("手机重启后会恢复提醒。系统强行停止应用后，请重新打开一次。", color = Muted, fontSize = 12.sp, lineHeight = 20.sp)
                 ActionRow(Glyph.Logout, if (state.demo) "退出演示，登录账号" else "退出登录") { if (!state.busy) confirmLogout = true }
             }
         }
         item {
-            Text("模糊时间的任务会进入每日汇总，可在任务详情中单独设定提醒。所有日程以北京时间为准。", color = Muted, fontSize = 10.sp, lineHeight = 18.sp, modifier = Modifier.padding(horizontal = 4.dp))
+            Text("本应用使用 MiSans 字体 · 英文点缀 Lora", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp))
+            Text("模糊时间的任务会进入每日汇总，可在任务详情中单独设定提醒。所有日程以北京时间为准。", color = Muted, fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.padding(horizontal = 4.dp))
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("营期日程 ${BuildConfig.VERSION_NAME}", fontSize = 10.sp, color = Muted)
-                TextButton(onClick = { showLicenses = true }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("开源许可", color = Muted, fontSize = 10.sp) }
+                Text("营期日程 ${BuildConfig.VERSION_NAME}", fontSize = 12.sp, color = Muted)
+                TextButton(onClick = { showLicenses = true }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("字体与组件许可", color = Muted, fontSize = 12.sp) }
             }
         }
     }
@@ -119,10 +120,11 @@ import java.time.LocalTime
             "Kizitonwose Calendar 2.6.1\n\n" + context.assets.open("calendar-license.txt").bufferedReader().use { it.readText() } +
                 "\n\nLucide Icons\n\n" + context.assets.open("lucide-license.txt").bufferedReader().use { it.readText() } +
                 "\n\nHaze 1.1.1\n\n" + context.assets.open("haze-license.txt").bufferedReader().use { it.readText() } +
-                "\n\nSchedule Sans SC (derived from Noto Sans SC)\n\n" + context.assets.open("font-license.txt").bufferedReader().use { it.readText() }
+                "\n\nMiSans · Xiaomi Inc.\n\n" + context.assets.open("font-license.txt").bufferedReader().use { it.readText() } +
+                "\n\nLora · SIL Open Font License 1.1\n\n" + context.assets.open("lora-license.txt").bufferedReader().use { it.readText() }
         }
-        AlertDialog(onDismissRequest = { showLicenses = false }, title = { Text("开源许可") }, text = {
-            Text(notice, fontSize = 10.sp, lineHeight = 17.sp, modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()))
+        AlertDialog(onDismissRequest = { showLicenses = false }, title = { Text("字体与组件许可") }, text = {
+            Text(notice, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()))
         }, confirmButton = { TextButton(onClick = { showLicenses = false }) { Text("关闭") } })
     }
 }

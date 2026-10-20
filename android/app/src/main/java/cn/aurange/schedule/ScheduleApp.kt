@@ -96,11 +96,11 @@ import dev.chrisbanes.haze.haze
         horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
         when {
             state.demo -> {
-                Text("演示预览", color = Muted, fontSize = 10.sp)
+                Text("演示预览", color = Muted, fontSize = 12.sp)
                 TextButton(onClick = signOut, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("登录", fontSize = 12.sp) }
             }
             state.loggedIn -> {
-                if (state.pendingCompletions.isNotEmpty()) Text("保存中 ${state.pendingCompletions.size}", color = Muted, fontSize = 10.sp)
+                if (state.pendingCompletions.isNotEmpty()) Text("保存中 ${state.pendingCompletions.size}", color = Muted, fontSize = 12.sp)
                 AppIcon(if (state.online) Glyph.Cloud else Glyph.Offline, modifier = Modifier.size(15.dp), tint = if (state.online) Sage else Amber)
                 IconButton(onClick = refresh, enabled = !state.busy, modifier = Modifier.size(40.dp)) { AppIcon(Glyph.Refresh, "刷新排期", modifier = Modifier.size(18.dp), tint = Blue) }
             }
@@ -115,7 +115,7 @@ import dev.chrisbanes.haze.haze
         AppIcon(Glyph.Offline, modifier = Modifier.size(13.dp), tint = Amber)
         val last = if (state.snapshot.syncedAt > 0) " · 上次同步 " + java.time.Instant.ofEpochMilli(state.snapshot.syncedAt)
             .atZone(BUSINESS_ZONE).format(java.time.format.DateTimeFormatter.ofPattern("M/d HH:mm")) else "，请刷新重试"
-        Text("离线缓存$last", color = Color(0xFF9C754A), fontSize = 10.sp)
+        Text("离线缓存$last", color = Amber, fontSize = 12.sp)
     }
 }
 
@@ -136,7 +136,7 @@ import dev.chrisbanes.haze.haze
                         .selectable(tab == index, role = Role.Tab, onClick = { select(index) })
                         .height(52.dp).padding(horizontal = 6.dp), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
                         AppIcon(icons[index], tint = tint, modifier = Modifier.size(19.dp))
-                        Text(title, color = tint, fontSize = 12.sp, fontWeight = if (tab == index) FontWeight.SemiBold else FontWeight.Normal)
+                        Text(title, color = tint, fontSize = 13.sp, fontWeight = if (tab == index) FontWeight.Medium else FontWeight.Normal)
                     }
                 }
             }

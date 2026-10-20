@@ -43,7 +43,6 @@ import java.util.Locale
     val completedIds = remember(snapshot) { snapshot.tasks.filterValues { it.completed }.keys }
     val groupedCompletedIds = remember(presentation) { presentation.tasks.filterValues { it.completed }.keys }
     val completed = tasks.count { it.id in completedIds }
-    val unfinished = tasks.size - completed
     val groups = remember(shownTasks, date, groupedCompletedIds, filter) { taskGroups(shownTasks, date, groupedCompletedIds, filter) }
     val canEdit = state.online && !state.demo && !state.busy
 
@@ -52,50 +51,39 @@ import java.util.Locale
         item {
             Row(Modifier.fillMaxWidth().padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(if (date == state.today) "今天的安排" else date.format(shortDate), style = MaterialTheme.typography.headlineMedium)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(if (date == state.today) "今天的安排" else date.format(shortDate), style = MaterialTheme.typography.headlineMedium)
+                        if (date == state.today) Text("Today", fontFamily = EditorialFont,
+                            fontSize = 19.sp, color = Blue, maxLines = 1)
+                    }
                     Text(date.format(DateTimeFormatter.ofPattern("M月d日 · EEEE", Locale.CHINA)), color = Muted,
                         fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
                 }
-                if (date != state.today) TextButton(onClick = { selectedDate = state.today.toString() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("今天", fontSize = 11.sp) }
+                if (date != state.today) TextButton(onClick = { selectedDate = state.today.toString() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("今天", fontSize = 12.sp) }
                 OutlinedIconButton(onClick = { showCalendar = true }, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Line)) {
                     AppIcon(Glyph.Calendar, "选择日期", tint = Ink)
                 }
             }
         }
         item {
-            Surface(shape = RoundedCornerShape(24.dp), color = Blue, shadowElevation = 2.dp) {
-                Row(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFF81988B), Color(0xFF5B7469))))
-                    .padding(horizontal = 22.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            AppIcon(Glyph.Sparkles, modifier = Modifier.size(14.dp), tint = Color(0xFFE5EDE6))
-                            Text(if (date == state.today) "今日待办" else "当日待办", fontSize = 11.sp, color = Color(0xFFE5EDE6))
-                        }
-                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Text("$unfinished", fontSize = 39.sp, lineHeight = 47.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Text("项待处理", color = Color(0xFFE5EDE6), fontSize = 11.sp, modifier = Modifier.padding(bottom = 8.dp))
-                        }
-                        Text("已完成 $completed 项  ·  跟进 ${tasks.count { it.template.follow }} 项", fontSize = 10.sp, color = Color(0xFFE5EDE6), modifier = Modifier.padding(top = 5.dp))
-                    }
-                    CompletionRing(completed, tasks.size, onDark = true)
-                }
-            }
+            TodaySummary(completed, tasks.size, tasks.count { isOverdue(it, date) && it.id !in completedIds },
+                tasks.count { it.template.follow && it.id !in completedIds })
         }
         item {
-            Surface(color = Color.White, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, Line.copy(alpha = .6f))) {
+            Surface(color = Color.White, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Line)) {
                 Box(Modifier.padding(horizontal = 7.dp, vertical = 9.dp)) { WeekDateStrip(date, state.today) { selectedDate = it.toString() } }
             }
         }
         item {
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("我的日程", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFEFEDE9)) {
+                Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFE7EBF1)) {
                     Row(Modifier.padding(3.dp)) {
                         TaskFilter.entries.forEach { option ->
                             Box(Modifier.clip(RoundedCornerShape(9.dp)).background(if (filter == option) Color.White else Color.Transparent)
                                 .selectable(filter == option, role = Role.Tab, onClick = { filterName = option.name })
                                 .padding(horizontal = 11.dp, vertical = 8.dp)) {
-                                Text(option.label, color = if (filter == option) Blue else Muted, fontSize = 11.sp,
+                                Text(option.label, color = if (filter == option) Blue else Muted, fontSize = 12.sp,
                                     fontWeight = if (filter == option) FontWeight.SemiBold else FontWeight.Normal)
                             }
                         }
@@ -115,7 +103,7 @@ import java.util.Locale
                 Row(Modifier.padding(top = 5.dp, start = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     Box(Modifier.width(3.dp).height(12.dp).background(accent, RoundedCornerShape(2.dp)))
                     Text(group.bucket.label, fontSize = 12.sp, color = accent, fontWeight = FontWeight.SemiBold)
-                    Text("${group.tasks.size}", fontSize = 11.sp, color = Muted)
+                    Text("${group.tasks.size}", fontSize = 12.sp, color = Muted)
                 }
             }
             items(group.tasks, key = { it.id }) { task ->
@@ -129,7 +117,7 @@ import java.util.Locale
         item {
             Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 AppIcon(Glyph.Clock, modifier = Modifier.size(12.dp), tint = Muted.copy(alpha = .7f))
-                Text("  北京时间 · 点击任务查看详情", fontSize = 10.sp, color = Muted.copy(alpha = .8f))
+                Text("  北京时间 · 点击任务查看详情", fontSize = 12.sp, color = Muted.copy(alpha = .8f))
             }
         }
     }

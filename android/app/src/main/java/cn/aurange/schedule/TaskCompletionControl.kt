@@ -58,7 +58,7 @@ fun TaskCompletionControl(completed: Boolean, enabled: Boolean, onComplete: () -
     val scale by animateFloatAsState(if (pressed) .9f else 1f, tween(100), label = "completion-press")
     val fill by animateFloatAsState(if (completed) 1f else 0f, tween(180), label = "completion-fill")
     val check by animateFloatAsState(if (completed) 1f else 0f, tween(200), label = "completion-check")
-    val outline by animateColorAsState(if (completed) Blue else Color(0xFFB9C5BC), tween(180), label = "completion-outline")
+    val outline by animateColorAsState(if (completed) Sage else Color(0xFF7C8BA1), tween(180), label = "completion-outline")
     // The visual stays small; the complete/restore target remains 48dp and accessible.
     Box(Modifier.size(48.dp)
         .semantics {
@@ -74,9 +74,9 @@ fun TaskCompletionControl(completed: Boolean, enabled: Boolean, onComplete: () -
         Canvas(Modifier.size(18.dp).scale(scale * rebound.value)) {
             val stroke = 1.2.dp.toPx()
             val radius = (size.minDimension - stroke) / 2
-            if (ring.value < 1f) drawCircle(Blue.copy(alpha = (1f - ring.value) * .22f),
+            if (ring.value < 1f) drawCircle(Sage.copy(alpha = (1f - ring.value) * .22f),
                 radius + 8.dp.toPx() * ring.value, style = Stroke(1.dp.toPx()))
-            if (fill > 0f) drawCircle(Blue.copy(alpha = fill), radius)
+            if (fill > 0f) drawCircle(Sage.copy(alpha = fill), radius)
             drawCircle(outline, radius, style = Stroke(stroke))
             if (check > 0f) {
                 val path = Path().apply {

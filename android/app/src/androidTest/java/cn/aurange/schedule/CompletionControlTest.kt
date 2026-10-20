@@ -5,6 +5,16 @@ import android.os.Build
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import android.graphics.Rect
+import android.graphics.Bitmap
+import java.io.File
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.After
@@ -93,6 +103,55 @@ class CompletionControlTest {
         assertFalse(waitFor("标记完成").isChecked)
         assertEquals(2, edits.get())
         assertEquals(0, opened.get())
+    }
+
+    @Test fun hundredPercentStaysCenteredAtLargeFontScale() {
+        instrumentation.runOnMainSync {
+            activity!!.setContent {
+                ScheduleTheme {
+                    val density = LocalDensity.current
+                    CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            TodaySummary(100, 100, 0, 0)
+                        }
+                    }
+                }
+            }
+        }
+        val badge = waitFor("完成比例")
+        val percent = waitFor("100%")
+        Thread.sleep(450)
+        assertEquals("cn.aurange.schedule", instrumentation.uiAutomation.rootInActiveWindow.packageName.toString())
+        File(context.getExternalFilesDir(null), "progress-100-large.png").outputStream().use {
+            instrumentation.uiAutomation.takeScreenshot().compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        val outer = Rect().also(badge::getBoundsInScreen)
+        val inner = Rect().also(percent::getBoundsInScreen)
+        assertTrue("Percentage must fit: badge=$outer text=$inner", outer.contains(inner))
+        assertEquals("Horizontal percentage center", outer.exactCenterX(), inner.exactCenterX(), 1.5f)
+        assertEquals("Vertical percentage center", outer.exactCenterY(), inner.exactCenterY(), 1.5f)
+    }
+
+    @Test fun partialCompleteAndEmptyDaysHaveDistinctProgressStates() {
+        val done = mutableStateOf(29)
+        val total = mutableStateOf(100)
+        instrumentation.runOnMainSync {
+            activity!!.setContent { ScheduleTheme { TodaySummary(done.value, total.value, 0, 0) } }
+        }
+        waitFor("29%")
+        waitFor("还有 71 项待办")
+        instrumentation.runOnMainSync { done.value = 99 }
+        waitFor("99%")
+        waitFor("还有 1 项待办")
+        instrumentation.runOnMainSync { done.value = 100 }
+        waitFor("100%")
+        waitFor("今天已全部完成")
+        instrumentation.runOnMainSync { total.value = 0; done.value = 0 }
+        waitFor("—")
+        waitFor("当天暂无安排")
+        instrumentation.waitForIdleSync()
+        assertNull("An empty day must not pretend to be 100% complete", node("100%"))
+        assertNull("An empty day should not show a misleading progress bar", node("日程完成进度"))
     }
 
     @Test fun readOnlyCompletionIsDisabledWhileCardDetailsRemainAvailable() {

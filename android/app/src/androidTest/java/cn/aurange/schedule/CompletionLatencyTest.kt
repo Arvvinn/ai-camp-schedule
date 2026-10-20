@@ -96,7 +96,7 @@ class CompletionLatencyTest {
             if (check()) return
             Thread.sleep(20)
         }
-        assertTrue("Timed out: busy=${model.state.value.busy}, loggedIn=${model.state.value.loggedIn}, pending=${model.state.value.pendingCompletions.size}, session=${repo.store.session() != null}", check())
+        assertTrue("Timed out: busy=${model.state.value.busy}, loggedIn=${model.state.value.loggedIn}, pending=${model.state.value.pendingCompletions.size}, session=${repo.store.session() != null}, message=${model.state.value.message}, calls=${server.calls}, writes=${server.writes}, uiTasks=${model.state.value.snapshot.tasks}, cacheTasks=${repo.store.snapshot().tasks}", check())
     }
     private fun tasks() = repo.engine.today(server.snapshot, LocalDate.now(BUSINESS_ZONE)).take(2)
 

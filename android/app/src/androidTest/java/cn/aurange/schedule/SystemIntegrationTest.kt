@@ -13,6 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.Executors
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicBoolean
 
 @RunWith(AndroidJUnit4::class)
 class SystemIntegrationTest {
@@ -50,6 +53,35 @@ class SystemIntegrationTest {
             assertNull(again.session()); assertTrue(again.snapshot().camps.isEmpty())
             assertTrue(again.custom().isEmpty()); assertNull(again.batch())
         } finally { repo.store.clearAccount(); ReminderScheduler(context).cancel() }
+    }
+
+    @Test fun snapshotReadersFromAnotherStoreCannotDiscardAnAcknowledgedWrite() {
+        loginFixture()
+        val reading = AtomicBoolean(true)
+        val entered = CountDownLatch(1)
+        val pool = Executors.newSingleThreadExecutor()
+        val otherStore = LocalStore(context)
+        val base = fixture().first
+        repo.store.snapshot(base)
+        val reader = pool.submit {
+            entered.countDown()
+            while (reading.get()) otherStore.snapshot()
+        }
+        try {
+            assertTrue(entered.await(3, TimeUnit.SECONDS))
+            for (version in 1..12) {
+                val saved = base.copy(syncedAt = version.toLong(), tasks = (1..200).associate {
+                    "storage-fixture|task-$it" to TaskState(true, version)
+                })
+                repo.store.snapshot(saved)
+                assertEquals("Another cache reader must not delete AtomicFile's in-flight .new file", saved, repo.store.snapshot())
+            }
+        } finally {
+            reading.set(false)
+            reader.get(5, TimeUnit.SECONDS)
+            pool.shutdownNow()
+            repo.store.clearAccount(); ReminderScheduler(context).cancel()
+        }
     }
 
     @Test fun completedTaskIsSuppressedAtDeliveryEvenWhenOldAlarmStillExists() {

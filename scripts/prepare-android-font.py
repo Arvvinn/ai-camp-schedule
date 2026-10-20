@@ -1,46 +1,41 @@
-"""Build offline UI fonts from Google's OFL Noto Sans SC (requires fonttools)."""
+"""Install original MiSans and Lora app fonts, with licenses (requires fonttools and pypdf)."""
 from pathlib import Path
 from urllib.request import urlopen
-from fontTools.ttLib import TTFont
-from fontTools.varLib.instancer import instantiateVariableFont
-from fontTools import subset
+from urllib.parse import quote
+from io import BytesIO
+from zipfile import ZipFile
 import hashlib
+from fontTools.ttLib import TTFont
+from pypdf import PdfReader
 
 root = Path(__file__).resolve().parents[1]
-cache = root / 'artifacts/android/font-source'
+cache = root / 'artifacts/android/workbench'
 cache.mkdir(parents=True, exist_ok=True)
-base = 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/'
-source = cache / 'NotoSansSC.ttf'
-if not source.exists():
-    source.write_bytes(urlopen(base + 'NotoSansSC%5Bwght%5D.ttf', timeout=90).read())
-source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
-if source_hash != 'a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da':
-    raise RuntimeError('The upstream font changed; review and update its pinned hash before regenerating.')
+fonts = root / 'android/app/src/main/res/font'
 assets = root / 'android/app/src/main/assets'
-license_text = urlopen(base + 'OFL.txt', timeout=30).read().decode('utf-8')
+archive = cache / 'MiSans.zip'
+if not archive.exists():
+    archive.write_bytes(urlopen('https://hyperos.mi.com/font-download/MiSans.zip', timeout=120).read())
+if hashlib.sha256(archive.read_bytes()).hexdigest() != 'b6aa1fc827035922612df8edf36e5609bca1c5441e25cd57572204569b7b81d9':
+    raise RuntimeError('MiSans archive changed; review the upstream release before updating the pinned hash.')
+with ZipFile(archive) as z:
+    for weight in ['Regular', 'Medium']:
+        original = z.read(f'MiSans/otf/MiSans-{weight}.otf')
+        target = fonts / f'misans_{weight.lower()}.otf'
+        target.write_bytes(original)  # Preserve original files: no subsetting, renaming or weight edits.
+        print(target.name, len(original), hashlib.sha256(original).hexdigest())
+    copyright_notice = TTFont(BytesIO(z.read('MiSans/otf/MiSans-Regular.otf')))['name'].getDebugName(0)
+pdf_url = 'https://hyperos.mi.com/font-download/' + quote('MiSans字体知识产权许可协议.pdf')
+pdf = urlopen(pdf_url, timeout=30).read()
+assets.joinpath('misans-license.pdf').write_bytes(pdf)
+license_text = copyright_notice + '\n\n' + '\n\n'.join(p.extract_text() for p in PdfReader(BytesIO(pdf)).pages)
 assets.joinpath('font-license.txt').write_text('\n'.join(line.rstrip() for line in license_text.splitlines()) + '\n', encoding='utf-8', newline='\n')
-codepoints = set(range(0x20, 0x250)) | set(range(0x2000, 0x2070)) | set(range(0x3000, 0x3040)) | set(range(0xFF00, 0xFFEF))
-# GB2312 common Chinese plus all shipped UI/SOP text; unknown glyphs use Android fallback.
-for high in range(0xB0, 0xF8):
-    for low in range(0xA1, 0xFF):
-        try: codepoints.add(ord(bytes([high, low]).decode('gb2312')))
-        except UnicodeDecodeError: pass
-for path in [*root.glob('android/app/src/main/java/**/*.kt'), assets / 'schedule.json']:
-    codepoints.update(map(ord, path.read_text(encoding='utf-8')))
-out = root / 'android/app/src/main/res/font'
-out.mkdir(parents=True, exist_ok=True)
-for weight, label in [(400, 'regular'), (600, 'semibold')]:
-    font = instantiateVariableFont(TTFont(source), {'wght': weight}, inplace=True)
-    opts = subset.Options()
-    opts.name_IDs = ['*']
-    tool = subset.Subsetter(options=opts)
-    tool.populate(unicodes=codepoints)
-    tool.subset(font)
-    for name in font['name'].names:
-        replacement = {1:'Schedule Sans SC', 2:label.title(), 4:'Schedule Sans SC '+label.title(),
-                       6:'ScheduleSansSC-'+label.title(), 16:'Schedule Sans SC', 17:label.title()}.get(name.nameID)
-        if replacement: name.string = replacement.encode(name.getEncoding())
-    target = out / ('schedule_sans_' + label + '.ttf')
-    font.save(target)
-    print(target.name, target.stat().st_size)
-print('Source SHA256:', hashlib.sha256(source.read_bytes()).hexdigest())
+
+lora_base = 'https://raw.githubusercontent.com/cyrealtype/Lora-Cyrillic/403b1a66ca2e79f81d749c5299559e168591a4df/'
+lora = urlopen(lora_base + 'fonts/variable/Lora%5Bwght%5D.ttf', timeout=45).read()
+fonts.joinpath('lora_regular.ttf').write_bytes(lora)
+notice = urlopen(lora_base + 'OFL.txt', timeout=30).read().decode('utf-8')
+assets.joinpath('lora-license.txt').write_text('\n'.join(line.rstrip() for line in notice.splitlines())+'\n', encoding='utf-8', newline='\n')
+print('lora_regular.ttf', len(lora), hashlib.sha256(lora).hexdigest())
+for name in ['schedule_sans_regular.ttf', 'schedule_sans_semibold.ttf']:
+    fonts.joinpath(name).unlink(missing_ok=True)

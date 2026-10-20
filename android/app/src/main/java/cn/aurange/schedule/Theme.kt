@@ -14,51 +14,54 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-val Ink = Color(0xFF303D39)
-val Navy = Color(0xFF485750)
-val Muted = Color(0xFF6D7771)
-val Canvas = Color(0xFFF5F4EF)
-val Line = Color(0xFFE3E6DF)
-val Blue = Color(0xFF536D70)
-val Lavender = Color(0xFFE7EEEA)
-val Amber = Color(0xFF977354)
-val Sage = Color(0xFF607D6B)
+val Ink = Color(0xFF182230)
+val Navy = Color(0xFF344054)
+val Muted = Color(0xFF475467)
+val Canvas = Color(0xFFF5F6F8)
+val Line = Color(0xFFD7DEE8)
+val Blue = Color(0xFF3659B8)
+val Lavender = Color(0xFFEAF0FC)
+val Amber = Color(0xFF9A4B0A)
+val Sage = Color(0xFF18794E)
+val Danger = Color(0xFFB42318)
+
+val EditorialFont = FontFamily(Font(R.font.lora_regular, FontWeight.Normal))
 
 private val AppFont = FontFamily(
-    Font(R.font.schedule_sans_regular, FontWeight.Normal),
-    Font(R.font.schedule_sans_semibold, FontWeight.Medium),
-    Font(R.font.schedule_sans_semibold, FontWeight.SemiBold),
-    Font(R.font.schedule_sans_semibold, FontWeight.Bold)
+    Font(R.font.misans_regular, FontWeight.Normal),
+    Font(R.font.misans_medium, FontWeight.Medium),
+    Font(R.font.misans_medium, FontWeight.SemiBold),
+    Font(R.font.misans_medium, FontWeight.Bold)
 )
 
 fun phaseColor(type: String): Color = when (type) {
-    "prep" -> Color(0xFF607D73)
+    "prep" -> Color(0xFF1D6B64)
     "open" -> Blue
-    "regular" -> Color(0xFF6B7B62)
+    "regular" -> Sage
     "exam" -> Amber
-    "close" -> Color(0xFF867487)
-    else -> Color(0xFF6D6A78)
+    "close" -> Color(0xFF6B4897)
+    else -> Muted
 }
 fun phaseBackground(type: String): Color = when (type) {
-    "prep" -> Color(0xFFE9EFEB)
+    "prep" -> Color(0xFFE8F3F0)
     "open" -> Lavender
-    "regular" -> Color(0xFFEDF3EB)
-    "exam" -> Color(0xFFF1EAE0)
-    "close" -> Color(0xFFEFE9ED)
-    else -> Color(0xFFF1F0F3)
+    "regular" -> Color(0xFFE9F4ED)
+    "exam" -> Color(0xFFFFF1DE)
+    "close" -> Color(0xFFF1ECF8)
+    else -> Color(0xFFF0F2F5)
 }
 
 private val AppTypography = Typography(
-    headlineLarge = TextStyle(fontSize = 30.sp, lineHeight = 40.sp, fontWeight = FontWeight.SemiBold),
-    headlineMedium = TextStyle(fontSize = 25.sp, lineHeight = 35.sp, fontWeight = FontWeight.SemiBold),
-    titleLarge = TextStyle(fontSize = 21.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
-    titleMedium = TextStyle(fontSize = 15.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold),
-    bodyLarge = TextStyle(fontSize = 14.sp, lineHeight = 23.sp),
-    bodyMedium = TextStyle(fontSize = 13.sp, lineHeight = 21.sp),
-    bodySmall = TextStyle(fontSize = 11.sp, lineHeight = 18.sp),
-    labelLarge = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp),
-    labelMedium = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Medium, lineHeight = 17.sp),
-    labelSmall = TextStyle(fontSize = 10.sp, lineHeight = 15.sp)
+    headlineLarge = TextStyle(fontSize = 28.sp, lineHeight = 38.sp, fontWeight = FontWeight.Medium),
+    headlineMedium = TextStyle(fontSize = 24.sp, lineHeight = 34.sp, fontWeight = FontWeight.Medium),
+    titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Medium),
+    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium),
+    bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 24.sp),
+    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 22.sp),
+    bodySmall = TextStyle(fontSize = 13.sp, lineHeight = 20.sp),
+    labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp),
+    labelMedium = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 18.sp),
+    labelSmall = TextStyle(fontSize = 12.sp, lineHeight = 18.sp)
 ).let { t ->
     fun TextStyle.chinese() = copy(fontFamily = AppFont, letterSpacing = 0.sp)
     t.copy(displayLarge = t.displayLarge.chinese(), displayMedium = t.displayMedium.chinese(), displaySmall = t.displaySmall.chinese(),
@@ -71,10 +74,10 @@ private val AppTypography = Typography(
 @Composable fun ScheduleTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = lightColorScheme(primary = Blue, onPrimary = Color.White,
         primaryContainer = Lavender, onPrimaryContainer = Blue, secondary = Sage,
-        secondaryContainer = Color(0xFFEDF3EB), onSecondaryContainer = Ink, background = Canvas, surface = Color.White,
+        secondaryContainer = Lavender, onSecondaryContainer = Blue, background = Canvas, surface = Color.White,
         surfaceContainer = Canvas, surfaceContainerHigh = Color.White, surfaceContainerHighest = Lavender,
-        onSurface = Ink, onBackground = Ink, outline = Color(0xFFB9C3BB), outlineVariant = Line,
-        surfaceVariant = Canvas, onSurfaceVariant = Muted, error = Color(0xFFB6615C)),
+        onSurface = Ink, onBackground = Ink, outline = Color(0xFF7C8BA1), outlineVariant = Line,
+        surfaceVariant = Canvas, onSurfaceVariant = Muted, error = Danger),
         typography = AppTypography, shapes = Shapes(small = RoundedCornerShape(12.dp), medium = RoundedCornerShape(18.dp),
             large = RoundedCornerShape(24.dp), extraLarge = RoundedCornerShape(30.dp)), content = content)
 }

@@ -46,10 +46,10 @@ import java.time.format.DateTimeFormatter
                 }
                 if (task.template.description.isNotEmpty()) WhiteCard {
                     Text("任务说明", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Text(task.template.description, color = Navy, fontSize = 13.sp, lineHeight = 24.sp)
+                    Text(task.template.description, color = Navy, fontSize = 14.sp, lineHeight = 24.sp)
                     if (task.template.follow) Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                         AppIcon(Glyph.Repeat, tint = phaseColor("prep"), modifier = Modifier.size(14.dp))
-                        Text("持续跟进，完成后移出每日待办", color = phaseColor("prep"), fontSize = 10.sp)
+                        Text("持续跟进，完成后移出每日待办", color = phaseColor("prep"), fontSize = 12.sp)
                     }
                 }
                 val links = task.template.links.mapNotNull { model.repo.sop.links[it] }
@@ -71,7 +71,7 @@ import java.time.format.DateTimeFormatter
                     }
                     Text(if (custom != null) "已设为 " + Instant.ofEpochMilli(custom).atZone(BUSINESS_ZONE).format(DateTimeFormatter.ofPattern("M月d日 HH:mm")) + "（北京时间）"
                         else if (task.clockTime != null) { if (state.settings.leadMinutes == 0) "默认按任务时间准时提醒" else "默认提前 ${state.settings.leadMinutes} 分钟提醒" }
-                        else "此任务会进入每日汇总，也可以设置具体提醒时刻。", color = Muted, fontSize = 11.sp, lineHeight = 20.sp)
+                        else "此任务会进入每日汇总，也可以设置具体提醒时刻。", color = Muted, fontSize = 12.sp, lineHeight = 20.sp)
                     OutlinedButton(onClick = {
                         if (state.demo) { detailMessage = "演示模式不保存提醒，请先登录。"; return@OutlinedButton }
                         val initial = custom?.let { Instant.ofEpochMilli(it).atZone(BUSINESS_ZONE).toLocalDateTime() }
@@ -86,11 +86,11 @@ import java.time.format.DateTimeFormatter
                     }, enabled = !completed && !state.busy && !saving, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
                         Text(if (custom == null) "设定提醒时间" else "修改提醒时间", fontSize = 12.sp)
                     }
-                    if (custom != null) TextButton(onClick = { model.custom(task.id, null) }, enabled = !state.busy) { Text("取消单独提醒", fontSize = 11.sp) }
-                    if (!state.settings.enabled) Text("日程提醒已暂停，请在设置中开启。", color = Amber, fontSize = 11.sp)
+                    if (custom != null) TextButton(onClick = { model.custom(task.id, null) }, enabled = !state.busy) { Text("取消单独提醒", fontSize = 12.sp) }
+                    if (!state.settings.enabled) Text("日程提醒已暂停，请在设置中开启。", color = Amber, fontSize = 12.sp)
                 }
                 if (detailMessage.isNotEmpty()) Text(detailMessage, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, lineHeight = 20.sp)
-                if (state.demo || !state.online) Text(if (state.demo) "演示模式仅供预览，登录后可同步完成状态。" else "当前显示离线缓存，联网同步后可标记完成。", color = Muted, fontSize = 11.sp, lineHeight = 20.sp)
+                if (state.demo || !state.online) Text(if (state.demo) "演示模式仅供预览，登录后可同步完成状态。" else "当前显示离线缓存，联网同步后可标记完成。", color = Muted, fontSize = 12.sp, lineHeight = 20.sp)
             }
             Column(Modifier.background(Canvas).padding(horizontal = 22.dp, vertical = 12.dp)) {
                 Button(onClick = { model.complete(task) }, enabled = state.online && !state.demo && !state.busy && !saving,

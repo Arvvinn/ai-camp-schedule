@@ -37,8 +37,8 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(statusBarStyle = SystemBarStyle.light(0xFFF5F4EF.toInt(), 0xFF485750.toInt()),
-            navigationBarStyle = SystemBarStyle.light(0xFFF5F4EF.toInt(), 0xFF485750.toInt()))
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.light(0xFFF5F6F8.toInt(), 0xFF344054.toInt()),
+            navigationBarStyle = SystemBarStyle.light(0xFFF5F6F8.toInt(), 0xFF344054.toInt()))
         if (intent.hasExtra("taskId")) route = intent.getStringExtra("taskId").orEmpty()
         ReminderScheduler(this).channels()
         setContent { ScheduleTheme { ScheduleApp(model, route, { route = null }, permissionVersion, ::askNotifications) } }
