@@ -6,6 +6,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -94,6 +95,29 @@ class ScheduleRepository internal constructor(context: Context,
     }
     suspend fun refresh(): Snapshot = withContext(Dispatchers.IO) { mutex.withLock { refreshLocked() } }
     suspend fun signOut() = withContext(Dispatchers.IO) { mutex.withLock { store.clearAccount() } }
+    suspend fun createCamp(draft: CampDraft): Snapshot = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            try {
+                checkAccess()
+                draft.error(store.snapshot().camps)?.let { throw IllegalStateException(it) }
+                val saved = rpc("save_schedule_camp", JSONObject().put("p_program", "ai")
+                    .put("p_id", JSONObject.NULL).put("p_version", 0).put("p_term", draft.term)
+                    .put("p_open_date", draft.openDate.toString()).put("p_skips", JSONArray(draft.skips.sorted())))
+                val camp = NativeJson.snapshot(JSONObject().put("camps", JSONArray().put(saved))
+                    .put("tasks", JSONArray()).toString()).camps.single()
+                // Cache the acknowledged insert directly: a later refresh failure must not invite duplicate submission.
+                val cached = store.snapshot()
+                cached.copy(camps = cached.camps.filterNot { it.id == camp.id } + camp).also(store::snapshot)
+            } catch (e: Exception) {
+                if (e is AccessDenied || e is LoginExpired) store.clearAccount()
+                if (e is CloudFailure && e.code == "23505") {
+                    throw IllegalStateException("第 ${draft.term} 期已存在，请刷新排期后换一个期数。")
+                }
+                if (e is java.io.IOException) throw IllegalStateException("未能确认营期是否保存，请联网刷新排期、核对期数后再试。", e)
+                throw e
+            }
+        }
+    }
     suspend fun complete(task: TaskOccurrence, completed: Boolean, expectedVersion: Int): Snapshot = withContext(Dispatchers.IO) {
         mutex.withLock {
             try {

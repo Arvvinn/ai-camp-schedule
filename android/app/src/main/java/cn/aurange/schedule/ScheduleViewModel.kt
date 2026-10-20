@@ -21,7 +21,8 @@ data class AppState(
     val busy: Boolean = false, val online: Boolean = false, val demo: Boolean = false,
     val message: String = "", val settings: ReminderSettings = ReminderSettings(),
     val custom: Map<String, Long> = emptyMap(), val today: LocalDate = LocalDate.now(BUSINESS_ZONE),
-    val pendingCompletions: Map<String, Boolean> = emptyMap()
+    val pendingCompletions: Map<String, Boolean> = emptyMap(), val createdCampId: String? = null,
+    val campError: String = ""
 ) {
     val displaySnapshot: Snapshot get() = if (pendingCompletions.isEmpty()) snapshot else snapshot.copy(
         tasks = snapshot.tasks + pendingCompletions.mapValues { (id, completed) -> TaskState(completed, snapshot.tasks[id]?.version ?: 0) })
@@ -71,7 +72,7 @@ class ScheduleViewModel @JvmOverloads constructor(application: Application,
             }
         }
     }
-    private fun run(block: suspend () -> Snapshot) {
+    private fun run(onSuccess: (Snapshot) -> Unit = {}, onFailure: (Exception) -> Unit = {}, block: suspend () -> Snapshot) {
         if (active?.isActive == true) return
         mutableState.value = mutableState.value.copy(busy = true, message = "")
         active = viewModelScope.launch {
@@ -80,12 +81,14 @@ class ScheduleViewModel @JvmOverloads constructor(application: Application,
                 val session = repo.store.session()
                 mutableState.value = mutableState.value.copy(snapshot = snapshot, loggedIn = session != null,
                     email = session?.email.orEmpty(), online = true, demo = false, custom = repo.store.custom())
+                onSuccess(snapshot)
                 if (backgroundSyncEnabled) SyncWorker.enable(getApplication())
             } catch (error: Exception) {
                 if (error is kotlinx.coroutines.CancellationException) throw error
                 val session = repo.store.session()
                 mutableState.value = mutableState.value.copy(snapshot = repo.store.snapshot(), loggedIn = session != null,
                     email = session?.email.orEmpty(), online = false, message = friendlyError(error), custom = repo.store.custom())
+                onFailure(error)
             } finally {
                 mutableState.value = mutableState.value.copy(busy = false)
                 updateReminders()
@@ -101,6 +104,19 @@ class ScheduleViewModel @JvmOverloads constructor(application: Application,
         val date = LocalDate.now(BUSINESS_ZONE)
         if (mutableState.value.today != date) mutableState.value = mutableState.value.copy(today = date)
         if (!mutableState.value.demo && mutableState.value.loggedIn && mutableState.value.pendingCompletions.isEmpty()) run { repo.refresh() }
+    }
+    fun createCamp(draft: CampDraft) {
+        val current = mutableState.value
+        if (current.demo || !current.loggedIn || !current.online || current.busy) return
+        draft.error(current.snapshot.camps)?.let { message(it); return }
+        mutableState.value = current.copy(campError = "")
+        run(onSuccess = { snapshot ->
+            mutableState.value = mutableState.value.copy(createdCampId = snapshot.camps.first { it.term == draft.term }.id,
+                campError = "", message = "第 ${draft.term} 期已添加，日程和提醒已按开营日期安排。")
+        }, onFailure = { error ->
+            mutableState.value = mutableState.value.copy(campError = friendlyError(error),
+                online = error is IllegalStateException && error.cause !is java.io.IOException)
+        }) { repo.createCamp(draft) }
     }
     fun complete(task: TaskOccurrence) {
         val state = mutableState.value

@@ -4,6 +4,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -21,7 +24,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 
 @Composable fun ScheduleApp(model: ScheduleViewModel, route: String?, onRouteHandled: () -> Unit,
                             permissionVersion: Int, askNotifications: () -> Unit) {
@@ -31,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
     val snackbar = remember { SnackbarHostState() }
     val savedScreens = rememberSaveableStateHolder()
     val engine = model.engine
+    val haze = remember { HazeState() }
     val tasks = remember(state.snapshot) { engine.allTasks(state.snapshot).associateBy { it.id } }
     LaunchedEffect(state.message) {
         if (state.message.isNotEmpty()) { snackbar.showSnackbar(state.message, duration = SnackbarDuration.Long); model.clearMessage() }
@@ -54,12 +61,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
     BackHandler(enabled = selectedTask != null || tab != 0) {
         if (selectedTask != null) selectedTask = null else tab = 0
     }
-    Scaffold(containerColor = Canvas,
-        topBar = { AppHeader(state, model::refresh, model::signOut) },
-        bottomBar = { if (state.loggedIn || state.demo) AppNavigation(tab) { tab = it } },
-        snackbarHost = { SnackbarHost(snackbar) }
+    Scaffold(containerColor = Canvas, contentWindowInsets = WindowInsets(0),
+        snackbarHost = { SnackbarHost(snackbar, Modifier.navigationBarsPadding().padding(bottom = 88.dp)) }
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
+      Box(Modifier.fillMaxSize().padding(padding)) {
+        Column(Modifier.fillMaxSize().haze(haze).background(Canvas).statusBarsPadding()) {
             AnimatedVisibility(state.busy) { LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = Blue, trackColor = Lavender) }
             if (state.loggedIn || state.demo) {
                 if (!state.demo && !state.online) OfflineBanner(state)
@@ -67,22 +73,27 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
                     savedScreens.SaveableStateProvider(page) {
                         when (page) {
                             0 -> TodayScreen(state, engine, { selectedTask = it.id }, model::complete)
-                            1 -> CampsScreen(state, engine, { selectedTask = it.id }, model::complete)
+                            1 -> CampsScreen(state, engine, { selectedTask = it.id }, model::complete, model::createCamp, model::refresh)
                             2 -> SettingsScreen(state, model, permissionVersion, askNotifications)
                         }
                     }
                 }
             } else LoginScreen(state, model)
         }
+        if (state.loggedIn || state.demo) {
+            AppStatus(state, haze, model::refresh, model::signOut, Modifier.align(Alignment.TopEnd).statusBarsPadding()
+                .padding(end = 20.dp, top = 5.dp))
+            AppNavigation(tab, haze, Modifier.align(Alignment.BottomCenter)) { tab = it }
+        }
+      }
     }
     selectedTask?.let { id -> tasks[id]?.let { task -> TaskDetail(task, state, model, onDismiss = { selectedTask = null }) } }
 }
 
-@Composable private fun AppHeader(state: AppState, refresh: () -> Unit, signOut: () -> Unit) {
-    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 22.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        AppMark()
-        Text("营期日程", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ink, modifier = Modifier.weight(1f))
+@Composable private fun AppStatus(state: AppState, haze: HazeState, refresh: () -> Unit, signOut: () -> Unit, modifier: Modifier) {
+    GlassSurface(haze, modifier, corner = 22) {
+      Row(Modifier.padding(start = 12.dp, end = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
         when {
             state.demo -> {
                 Text("演示预览", color = Muted, fontSize = 10.sp)
@@ -94,6 +105,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
                 IconButton(onClick = refresh, enabled = !state.busy, modifier = Modifier.size(40.dp)) { AppIcon(Glyph.Refresh, "刷新排期", modifier = Modifier.size(18.dp), tint = Blue) }
             }
         }
+      }
     }
 }
 
@@ -107,21 +119,28 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
     }
 }
 
-@Composable private fun AppNavigation(tab: Int, select: (Int) -> Unit) {
-    Box(Modifier.fillMaxWidth().background(Canvas).navigationBarsPadding().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 10.dp)) {
-        Surface(shape = RoundedCornerShape(24.dp), color = Color.White, shadowElevation = 3.dp, border = BorderStroke(1.dp, Line.copy(alpha = .4f))) {
-            Row(Modifier.fillMaxWidth().padding(7.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+@Composable private fun AppNavigation(tab: Int, haze: HazeState, modifier: Modifier, select: (Int) -> Unit) {
+    Box(modifier.fillMaxWidth().navigationBarsPadding().padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 12.dp)) {
+        GlassSurface(haze) {
+          BoxWithConstraints(Modifier.fillMaxWidth().padding(7.dp)) {
+            val itemWidth = maxWidth / 3
+            val offset by animateDpAsState(itemWidth * tab, spring(dampingRatio = .85f, stiffness = 480f), label = "navigation-position")
+            Box(Modifier.offset { IntOffset(offset.roundToPx(), 0) }.width(itemWidth).height(52.dp).clip(RoundedCornerShape(22.dp))
+                .background(Blue.copy(alpha = .14f)))
+            Row(Modifier.fillMaxWidth()) {
                 val labels = listOf("今日", "营期", "设置")
                 val icons = listOf(Glyph.Sun, Glyph.Layers, Glyph.Sliders)
                 labels.forEachIndexed { index, title ->
-                    Row(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(if (tab == index) Lavender else Color.Transparent)
+                    val tint by animateColorAsState(if (tab == index) Blue else Muted, tween(180), label = "navigation-tint")
+                    Row(Modifier.weight(1f).clip(RoundedCornerShape(22.dp))
                         .selectable(tab == index, role = Role.Tab, onClick = { select(index) })
-                        .heightIn(min = 46.dp).padding(horizontal = 6.dp, vertical = 11.dp), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
-                        AppIcon(icons[index], tint = if (tab == index) Blue else Muted, modifier = Modifier.size(19.dp))
-                        Text(title, color = if (tab == index) Blue else Muted, fontSize = 12.sp, fontWeight = if (tab == index) FontWeight.SemiBold else FontWeight.Medium)
+                        .height(52.dp).padding(horizontal = 6.dp), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+                        AppIcon(icons[index], tint = tint, modifier = Modifier.size(19.dp))
+                        Text(title, color = tint, fontSize = 12.sp, fontWeight = if (tab == index) FontWeight.SemiBold else FontWeight.Normal)
                     }
                 }
             }
+          }
         }
     }
 }

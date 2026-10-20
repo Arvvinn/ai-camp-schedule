@@ -30,7 +30,7 @@ import java.time.LocalTime
     var chooseLead by remember { mutableStateOf(false) }
     var confirmLogout by remember { mutableStateOf(false) }
     var showLicenses by remember { mutableStateOf(false) }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 60.dp, bottom = floatingContentBottom()),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Text("偏好设置", style = MaterialTheme.typography.headlineMedium)
@@ -117,7 +117,9 @@ import java.time.LocalTime
     if (showLicenses) {
         val notice = remember {
             "Kizitonwose Calendar 2.6.1\n\n" + context.assets.open("calendar-license.txt").bufferedReader().use { it.readText() } +
-                "\n\nLucide Icons\n\n" + context.assets.open("lucide-license.txt").bufferedReader().use { it.readText() }
+                "\n\nLucide Icons\n\n" + context.assets.open("lucide-license.txt").bufferedReader().use { it.readText() } +
+                "\n\nHaze 1.1.1\n\n" + context.assets.open("haze-license.txt").bufferedReader().use { it.readText() } +
+                "\n\nSchedule Sans SC (derived from Noto Sans SC)\n\n" + context.assets.open("font-license.txt").bufferedReader().use { it.readText() }
         }
         AlertDialog(onDismissRequest = { showLicenses = false }, title = { Text("开源许可") }, text = {
             Text(notice, fontSize = 10.sp, lineHeight = 17.sp, modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()))

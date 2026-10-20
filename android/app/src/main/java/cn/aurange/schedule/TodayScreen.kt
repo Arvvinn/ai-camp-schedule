@@ -47,7 +47,7 @@ import java.util.Locale
     val groups = remember(shownTasks, date, groupedCompletedIds, filter) { taskGroups(shownTasks, date, groupedCompletedIds, filter) }
     val canEdit = state.online && !state.demo && !state.busy
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 60.dp, bottom = floatingContentBottom()),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Row(Modifier.fillMaxWidth().padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -64,18 +64,18 @@ import java.util.Locale
         }
         item {
             Surface(shape = RoundedCornerShape(24.dp), color = Blue, shadowElevation = 2.dp) {
-                Row(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFF7169E5), Color(0xFF524BC7))))
+                Row(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFF81988B), Color(0xFF5B7469))))
                     .padding(horizontal = 22.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            AppIcon(Glyph.Sparkles, modifier = Modifier.size(14.dp), tint = Color(0xFFDDD9FF))
-                            Text(if (date == state.today) "今日待办" else "当日待办", fontSize = 11.sp, color = Color(0xFFE3DFFF))
+                            AppIcon(Glyph.Sparkles, modifier = Modifier.size(14.dp), tint = Color(0xFFE5EDE6))
+                            Text(if (date == state.today) "今日待办" else "当日待办", fontSize = 11.sp, color = Color(0xFFE5EDE6))
                         }
                         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                             Text("$unfinished", fontSize = 39.sp, lineHeight = 47.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Text("项待处理", color = Color(0xFFE3DFFF), fontSize = 11.sp, modifier = Modifier.padding(bottom = 8.dp))
+                            Text("项待处理", color = Color(0xFFE5EDE6), fontSize = 11.sp, modifier = Modifier.padding(bottom = 8.dp))
                         }
-                        Text("已完成 $completed 项  ·  跟进 ${tasks.count { it.template.follow }} 项", fontSize = 10.sp, color = Color(0xFFE3DFFF), modifier = Modifier.padding(top = 5.dp))
+                        Text("已完成 $completed 项  ·  跟进 ${tasks.count { it.template.follow }} 项", fontSize = 10.sp, color = Color(0xFFE5EDE6), modifier = Modifier.padding(top = 5.dp))
                     }
                     CompletionRing(completed, tasks.size, onDark = true)
                 }

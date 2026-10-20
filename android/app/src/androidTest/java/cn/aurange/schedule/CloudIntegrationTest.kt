@@ -31,6 +31,7 @@ class CloudIntegrationTest {
         var offline = false
         var expired = false
         var expectedVersion = 0
+        var duplicateCamp = false
         var onSnapshot: (() -> Unit)? = null
         val calls = mutableListOf<String>()
         fun post(path: String, body: JSONObject, token: String?): JSONObject {
@@ -45,6 +46,16 @@ class CloudIntegrationTest {
             return when {
                 path.endsWith("my_app_access") -> JSONObject().put("allowed", allowed).put("apps", JSONArray(if (allowed) listOf("ai") else emptyList<String>()))
                 path.endsWith("schedule_snapshot") -> { onSnapshot?.invoke(); JSONObject(NativeJson.snapshot(snapshot)) }
+                path.endsWith("save_schedule_camp") -> {
+                    assertEquals("ai", body.getString("p_program"))
+                    assertTrue(body.isNull("p_id")); assertEquals(0, body.getInt("p_version"))
+                    if (duplicateCamp) throw CloudFailure(409, "23505", "schedule_camps_active_term")
+                    val skips = body.getJSONArray("p_skips")
+                    val saved = Camp("created-fixture", body.getInt("p_term"), LocalDate.parse(body.getString("p_open_date")),
+                        (0 until skips.length()).map { skips.getInt(it) }.toSet())
+                    snapshot = snapshot.copy(camps = snapshot.camps + saved)
+                    JSONObject(NativeJson.snapshot(Snapshot(listOf(saved)))).getJSONArray("camps").getJSONObject(0)
+                }
                 path.endsWith("set_schedule_task") -> {
                     assertEquals("ai", body.getString("p_program"))
                     assertEquals(expectedVersion, body.getInt("p_version"))
@@ -112,6 +123,42 @@ class CloudIntegrationTest {
         signOutStarted.await()
         release.countDown()
         refresh.await(); logout.await()
+        assertNull(store.session()); assertTrue(store.snapshot().camps.isEmpty())
+    }
+
+    @Test fun createCampUsesWebsiteRpcAndImmediatelyFeedsScheduleCacheAndReminders() = runBlocking {
+        val server = Server(); val repo = ScheduleRepository(context, server::post)
+        repo.signIn("fixture@example.invalid", "fixture-password")
+        val created = repo.createCamp(CampDraft(2, LocalDate.parse("2026-11-01"), setOf(2, 4)))
+        val camp = created.camps.single { it.term == 2 }
+        assertEquals(server.snapshot.camps.last(), camp)
+        assertEquals(created, store.snapshot())
+        assertEquals(2, repo.engine.phases(camp).count { it.type == "rest" })
+        assertTrue(repo.engine.today(created, camp.openDate).any { it.camp.id == camp.id })
+        val now = camp.openDate.atTime(8, 0).atZone(BUSINESS_ZONE).toInstant()
+        assertTrue(ReminderPlan(repo.engine).next(Snapshot(listOf(camp)), ReminderSettings(), now)!!.events.isNotEmpty())
+        val task = repo.engine.allTasks(created).first { it.camp.id == camp.id }
+        assertTrue(repo.complete(task, true, 0).tasks[task.id]!!.completed)
+        assertEquals(1, server.calls.count { it.endsWith("save_schedule_camp") })
+    }
+
+    @Test fun campValidationDuplicateNetworkAndDeniedWritesPreserveConfirmedData() = runBlocking {
+        val server = Server(); val repo = ScheduleRepository(context, server::post)
+        val before = repo.signIn("fixture@example.invalid", "fixture-password")
+        try { repo.createCamp(CampDraft(1, server.camp.openDate)); fail("duplicate local term") } catch (_: IllegalStateException) { }
+        assertFalse(server.calls.any { it.endsWith("save_schedule_camp") })
+        server.duplicateCamp = true
+        try { repo.createCamp(CampDraft(2, server.camp.openDate)); fail("duplicate shared term") }
+        catch (e: IllegalStateException) { assertTrue(e.message.orEmpty().contains("已存在")) }
+        assertEquals(before, store.snapshot())
+        server.offline = true
+        try { repo.createCamp(CampDraft(2, server.camp.openDate)); fail("offline") }
+        catch (e: IllegalStateException) { assertTrue(e.message.orEmpty().contains("核对")) }
+        assertEquals(before, store.snapshot())
+        server.offline = false; server.allowed = false
+        val writes = server.calls.count { it.endsWith("save_schedule_camp") }
+        try { repo.createCamp(CampDraft(2, server.camp.openDate)); fail("denied") } catch (_: AccessDenied) { }
+        assertEquals(writes, server.calls.count { it.endsWith("save_schedule_camp") })
         assertNull(store.session()); assertTrue(store.snapshot().camps.isEmpty())
     }
 }

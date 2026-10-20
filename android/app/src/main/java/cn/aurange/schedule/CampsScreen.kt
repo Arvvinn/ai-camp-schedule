@@ -18,21 +18,31 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable fun CampsScreen(state: AppState, engine: ScheduleEngine, onTask: (TaskOccurrence) -> Unit,
-                            onComplete: (TaskOccurrence) -> Unit) {
+                            onComplete: (TaskOccurrence) -> Unit, onAdd: (CampDraft) -> Unit = {}, onRefresh: () -> Unit = {}) {
     var selectedCamp by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedPhase by rememberSaveable { mutableStateOf<String?>(null) }
-    val context = LocalContext.current
+    var handledCampId by rememberSaveable { mutableStateOf<String?>(null) }
+    var adding by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.createdCampId) {
+        state.createdCampId?.takeIf { it != handledCampId }?.let {
+            selectedCamp = it; selectedPhase = null; adding = false; handledCampId = it
+        }
+    }
     val camps = remember(state.snapshot.camps, state.today) {
         state.snapshot.camps.sortedWith(compareBy<Camp>({ if (engine.current(it, state.today) != null) 0 else if (it.openDate > state.today) 1 else 2 }, { it.openDate }))
     }
     val camp = camps.firstOrNull { it.id == selectedCamp } ?: camps.firstOrNull()
+    val campScroll = rememberLazyListState()
+    LaunchedEffect(camp?.id) {
+        val index = camps.indexOfFirst { it.id == camp?.id }
+        if (index >= 0) campScroll.animateScrollToItem(index)
+    }
     val phases = remember(camp) { camp?.let(engine::phases).orEmpty() }
     val phase = camp?.let { phases.firstOrNull { p -> p.key == selectedPhase } ?: engine.current(it, state.today)
         ?: if (state.today < phases.first().start) phases.first() else phases.last() }
@@ -40,7 +50,7 @@ import androidx.compose.ui.unit.sp
     val done = tasks.count { engine.complete(state.displaySnapshot, it) }
     val progress by animateFloatAsState(if (tasks.isEmpty()) 0f else done.toFloat() / tasks.size, tween(250), label = "camp-progress")
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 60.dp, bottom = floatingContentBottom()),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -48,14 +58,13 @@ import androidx.compose.ui.unit.sp
                     Text("我的营期", style = MaterialTheme.typography.headlineMedium)
                     Text("${camps.size} 个营期 · ${camps.count { engine.current(it, state.today) != null }} 个进行中", fontSize = 12.sp, color = Muted, modifier = Modifier.padding(top = 6.dp))
                 }
-                OutlinedIconButton(onClick = { ExternalLinks.document(context, "https://internal.aurange.cn/ai-camp-schedule/") }, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Line)) {
-                    AppIcon(Glyph.External, "管理营期", tint = Ink)
-                }
+                FilledTonalButton(onClick = { adding = true }, enabled = state.online && !state.demo && !state.busy,
+                    contentPadding = PaddingValues(horizontal = 15.dp)) { Text("添加营期") }
             }
         }
-        if (camps.isEmpty()) item { EmptyCard("暂无团队营期", "在网页版添加营期后，回到应用刷新即可同步。") }
+        if (camps.isEmpty()) item { EmptyCard("暂无团队营期", "点击「添加营期」，设置开营日期后自动生成日程。") }
         item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyRow(state = campScroll, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(camps, key = { it.id }) { c ->
                     val current = engine.current(c, state.today)
                     val selected = camp?.id == c.id
@@ -124,4 +133,5 @@ import androidx.compose.ui.unit.sp
             }
         }
     }
+    if (adding) AddCampSheet(state, { adding = false }, onAdd, onRefresh)
 }

@@ -35,7 +35,7 @@ try {
         $lines = @("storeFile=$keyPropertyPath", "storePassword=$($credentials.password)", 'keyAlias=camp-schedule', "keyPassword=$($credentials.password)")
         [IO.File]::WriteAllLines($signingConfig, $lines, [Text.UTF8Encoding]::new($false))
     }
-    $tasks = if ($SkipChecks) { @('assembleRelease') } else { @('testDebugUnitTest', 'lintDebug', 'assembleRelease') }
+    [string[]]$tasks = if ($SkipChecks) { @('assembleRelease') } else { @('testDebugUnitTest', 'lintDebug', 'assembleRelease') }
     & (Join-Path $projectDir 'gradlew.bat') -p $projectDir @tasks --console plain
     if ($LASTEXITCODE -ne 0) { throw 'Android verification/build failed.' }
     $outputDir = Join-Path $repoDir 'artifacts\android'

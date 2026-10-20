@@ -58,7 +58,7 @@ fun TaskCompletionControl(completed: Boolean, enabled: Boolean, onComplete: () -
     val scale by animateFloatAsState(if (pressed) .9f else 1f, tween(100), label = "completion-press")
     val fill by animateFloatAsState(if (completed) 1f else 0f, tween(180), label = "completion-fill")
     val check by animateFloatAsState(if (completed) 1f else 0f, tween(200), label = "completion-check")
-    val outline by animateColorAsState(if (completed) Blue else Color(0xFFC8C4D6), tween(180), label = "completion-outline")
+    val outline by animateColorAsState(if (completed) Blue else Color(0xFFB9C5BC), tween(180), label = "completion-outline")
     // The visual stays small; the complete/restore target remains 48dp and accessible.
     Box(Modifier.size(48.dp)
         .semantics {

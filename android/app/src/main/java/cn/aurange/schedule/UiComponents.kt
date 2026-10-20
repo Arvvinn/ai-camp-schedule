@@ -81,7 +81,7 @@ val weekDay: DateTimeFormatter = DateTimeFormatter.ofPattern("E", Locale.CHINA)
 
 @Composable fun TaskCard(task: TaskOccurrence, completed: Boolean, canEdit: Boolean, overdue: Boolean,
                         onClick: () -> Unit, onComplete: () -> Unit, saving: Boolean = false) {
-    val background by animateColorAsState(if (completed) Color(0xFFFBFAFE) else Color.White, tween(180), label = "task-color")
+    val background by animateColorAsState(if (completed) Color(0xFFF0F3EE) else Color.White, tween(180), label = "task-color")
     Surface(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable(onClick = onClick), color = background,
         shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, if (overdue && !completed) Color(0xFFF0DDD2) else Line.copy(alpha = .65f))) {
         Row(Modifier.padding(start = 8.dp, end = 15.dp, top = 12.dp, bottom = 13.dp), verticalAlignment = Alignment.CenterVertically) {

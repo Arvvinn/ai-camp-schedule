@@ -24,7 +24,7 @@ try {
     $classes = ($core + 'cn.aurange.schedule.CloudIntegrationTest') -join ','
     $coreResult = & adb -s $Device shell am instrument -w -r -e class $classes $runner
     $coreResult | Set-Content -LiteralPath (Join-Path $outputDir 'device-tests.txt') -Encoding utf8
-    if (($coreResult -join "`n") -notmatch 'OK \(7 tests\)') { throw "Device tests failed: $($coreResult -join "`n")" }
+    if (($coreResult -join "`n") -notmatch 'OK \(9 tests\)') { throw "Device tests failed: $($coreResult -join "`n")" }
 
     $prepare = & adb -s $Device shell am instrument -w -r -e class 'cn.aurange.schedule.SystemIntegrationTest#prepareBackgroundAlarm' $runner
     if (($prepare -join "`n") -notmatch 'OK \(1 test\)') { throw 'Could not prepare the background alarm fixture.' }
@@ -44,7 +44,7 @@ try {
         Start-Sleep -Milliseconds 750
     }
     if (-not $delivered) { throw 'No notification was delivered after app process exit.' }
-    'PASS: 7 device tests; app process exited before scheduled notification; notification delivered without reopening UI.' |
+    'PASS: 9 device tests; app process exited before scheduled notification; notification delivered without reopening UI.' |
         Set-Content -LiteralPath (Join-Path $outputDir 'background-check.txt') -Encoding utf8
     Write-Output 'PASS: encrypted cache, logout cleanup, completion suppression, notification routing, and process-exit reminder delivery.'
 } finally {

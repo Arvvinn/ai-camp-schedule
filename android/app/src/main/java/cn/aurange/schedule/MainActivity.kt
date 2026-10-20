@@ -2,6 +2,8 @@ package cn.aurange.schedule
 
 import android.Manifest
 import android.content.Intent
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -22,6 +24,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        val configuration = Configuration(newBase.resources.configuration).apply { setLocale(java.util.Locale.SIMPLIFIED_CHINESE) }
+        super.attachBaseContext(newBase.createConfigurationContext(configuration))
+    }
     private val model: ScheduleViewModel by viewModels()
     private var route by mutableStateOf<String?>(null)
     private var permissionVersion by mutableIntStateOf(0)
@@ -31,8 +37,8 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(statusBarStyle = SystemBarStyle.light(0xFFF8F7F4.toInt(), 0xFF323044.toInt()),
-            navigationBarStyle = SystemBarStyle.light(0xFFF8F7F4.toInt(), 0xFF323044.toInt()))
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.light(0xFFF5F4EF.toInt(), 0xFF485750.toInt()),
+            navigationBarStyle = SystemBarStyle.light(0xFFF5F4EF.toInt(), 0xFF485750.toInt()))
         if (intent.hasExtra("taskId")) route = intent.getStringExtra("taskId").orEmpty()
         ReminderScheduler(this).channels()
         setContent { ScheduleTheme { ScheduleApp(model, route, { route = null }, permissionVersion, ::askNotifications) } }
