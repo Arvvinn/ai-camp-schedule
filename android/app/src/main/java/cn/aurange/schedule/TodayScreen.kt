@@ -1,6 +1,8 @@
 package cn.aurange.schedule
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,12 +35,12 @@ import java.util.Locale
     var filterName by rememberSaveable { mutableStateOf(TaskFilter.ALL.name) }
     val filter = TaskFilter.valueOf(filterName)
     val date = LocalDate.parse(selectedDate)
-    val tasks = remember(state.snapshot, date) { engine.today(state.snapshot, date) }
-    // Keep a confirmed task in its old position just long enough to draw the check.
-    // Status/counts use live state; only grouping/removal waits for the animation.
-    val presentation = rememberCompletionPresentation(state.snapshot)
+    val snapshot = state.displaySnapshot
+    val tasks = remember(snapshot, date) { engine.today(snapshot, date) }
+    // Only grouping/removal waits for the animation; display status responds on tap.
+    val presentation = rememberCompletionPresentation(snapshot)
     val shownTasks = remember(presentation, date) { engine.today(presentation, date) }
-    val completedIds = remember(state.snapshot) { state.snapshot.tasks.filterValues { it.completed }.keys }
+    val completedIds = remember(snapshot) { snapshot.tasks.filterValues { it.completed }.keys }
     val groupedCompletedIds = remember(presentation) { presentation.tasks.filterValues { it.completed }.keys }
     val completed = tasks.count { it.id in completedIds }
     val unfinished = tasks.size - completed
@@ -117,7 +119,11 @@ import java.util.Locale
                 }
             }
             items(group.tasks, key = { it.id }) { task ->
-                TaskCard(task, task.id in completedIds, canEdit, isOverdue(task, date), { onTask(task) }, { onComplete(task) })
+                Box(Modifier.animateItem(fadeInSpec = tween(160), fadeOutSpec = tween(160),
+                    placementSpec = spring(dampingRatio = .85f, stiffness = 500f))) {
+                    TaskCard(task, task.id in completedIds, canEdit && task.id !in state.pendingCompletions,
+                        isOverdue(task, date), { onTask(task) }, { onComplete(task) }, saving = task.id in state.pendingCompletions)
+                }
             }
         }
         item {
@@ -145,7 +151,7 @@ private fun rememberCompletionPresentation(snapshot: Snapshot): Snapshot {
     LaunchedEffect(snapshot) {
         if (displayed.camps == snapshot.camps &&
             displayed.tasks.filterValues { it.completed }.keys != snapshot.tasks.filterValues { it.completed }.keys) {
-            delay(240)
+            delay(320)
         }
         displayed = snapshot
     }

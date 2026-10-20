@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.sp
     val phase = camp?.let { phases.firstOrNull { p -> p.key == selectedPhase } ?: engine.current(it, state.today)
         ?: if (state.today < phases.first().start) phases.first() else phases.last() }
     val tasks = remember(camp, phase) { if (camp != null && phase != null) engine.tasks(camp, phase) else emptyList() }
-    val done = tasks.count { engine.complete(state.snapshot, it) }
+    val done = tasks.count { engine.complete(state.displaySnapshot, it) }
     val progress by animateFloatAsState(if (tasks.isEmpty()) 0f else done.toFloat() / tasks.size, tween(250), label = "camp-progress")
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
@@ -118,8 +118,8 @@ import androidx.compose.ui.unit.sp
                     SectionTitle(label) { Text("${dayTasks.size} 项", fontSize = 10.sp, color = Muted) }
                 }
                 items(dayTasks, key = { "camp:${it.id}" }) { task ->
-                    TaskCard(task, engine.complete(state.snapshot, task), state.online && !state.busy && !state.demo,
-                        isOverdue(task, state.today), { onTask(task) }, { onComplete(task) })
+                    TaskCard(task, engine.complete(state.displaySnapshot, task), state.online && !state.busy && !state.demo && task.id !in state.pendingCompletions,
+                        isOverdue(task, state.today), { onTask(task) }, { onComplete(task) }, saving = task.id in state.pendingCompletions)
                 }
             }
         }

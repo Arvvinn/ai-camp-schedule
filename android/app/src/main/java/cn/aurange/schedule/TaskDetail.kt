@@ -24,7 +24,8 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun TaskDetail(task: TaskOccurrence, state: AppState, model: ScheduleViewModel, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val completed = model.engine.complete(state.snapshot, task)
+    val completed = model.engine.complete(state.displaySnapshot, task)
+    val saving = task.id in state.pendingCompletions
     val custom = state.custom[task.id]
     var detailMessage by remember(task.id) { mutableStateOf("") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -82,7 +83,7 @@ import java.time.format.DateTimeFormatter
                                 else { model.custom(task.id, at); onDismiss() }
                             }, initial.hour, initial.minute, true).show()
                         }, initial.year, initial.monthValue - 1, initial.dayOfMonth).show()
-                    }, enabled = !completed && !state.busy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                    }, enabled = !completed && !state.busy && !saving, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
                         Text(if (custom == null) "设定提醒时间" else "修改提醒时间", fontSize = 12.sp)
                     }
                     if (custom != null) TextButton(onClick = { model.custom(task.id, null) }, enabled = !state.busy) { Text("取消单独提醒", fontSize = 11.sp) }
@@ -92,10 +93,10 @@ import java.time.format.DateTimeFormatter
                 if (state.demo || !state.online) Text(if (state.demo) "演示模式仅供预览，登录后可同步完成状态。" else "当前显示离线缓存，联网同步后可标记完成。", color = Muted, fontSize = 11.sp, lineHeight = 20.sp)
             }
             Column(Modifier.background(Canvas).padding(horizontal = 22.dp, vertical = 12.dp)) {
-                Button(onClick = { model.complete(task) }, enabled = state.online && !state.demo && !state.busy,
+                Button(onClick = { model.complete(task) }, enabled = state.online && !state.demo && !state.busy && !saving,
                     modifier = Modifier.fillMaxWidth().height(49.dp), shape = RoundedCornerShape(15.dp)) {
                     AppIcon(if (completed) Glyph.Repeat else Glyph.Check, tint = if (state.online && !state.demo && !state.busy) Color.White else Muted, modifier = Modifier.size(17.dp))
-                    Spacer(Modifier.width(8.dp)); Text(if (completed) "恢复为未完成" else "标记为已完成")
+                    Spacer(Modifier.width(8.dp)); Text(if (saving) "正在保存…" else if (completed) "恢复为未完成" else "标记为已完成")
                 }
             }
         }

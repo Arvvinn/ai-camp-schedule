@@ -100,11 +100,11 @@ class ScheduleRepository internal constructor(context: Context,
                 checkAccess()
                 val confirmed = rpc("set_schedule_task", JSONObject().put("p_program", "ai").put("p_camp_id", task.camp.id)
                     .put("p_task_key", task.key).put("p_version", expectedVersion).put("p_completed", completed))
-                // Save the confirmed change before fetching again: alarms must not use old completion state.
+                // The RPC acknowledges this version; persist it for alarms without another full refresh.
                 val old = store.snapshot()
                 store.snapshot(old.copy(tasks = old.tasks + (task.id to TaskState(completed, confirmed.getInt("version")))))
                 if (completed) store.custom(task.id, null)
-                refreshLocked()
+                store.snapshot()
             } catch (e: Exception) {
                 if (e is AccessDenied || e is LoginExpired) store.clearAccount()
                 if (e is CloudFailure && (e.code == "P0001" || e.message.orEmpty().contains("schedule_conflict"))) {

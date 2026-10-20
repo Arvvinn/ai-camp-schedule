@@ -2,13 +2,17 @@ package cn.aurange.schedule
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.work.WorkManager
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.LocalDate
+import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class SystemIntegrationTest {
@@ -22,6 +26,7 @@ class SystemIntegrationTest {
     }
     private fun loginFixture() {
         repo.store.clearAccount()
+        WorkManager.getInstance(context).cancelAllWork().result.get(5, TimeUnit.SECONDS)
         repo.store.session(Session("instrumentation-only-access", "instrumentation-only-refresh",
             System.currentTimeMillis() / 1000 + 3600, "instrumentation@example.invalid", "instrumentation-user"))
         repo.store.settings(ReminderSettings())
@@ -83,6 +88,13 @@ class SystemIntegrationTest {
     }
 
     // Used by the external ADB lifecycle check. No cloud call is made with this fixture.
+    @Test fun isolateBackgroundFixture() {
+        repo.store.clearAccount()
+        WorkManager.getInstance(context).cancelAllWork().result.get(5, TimeUnit.SECONDS)
+        context.packageManager.setComponentEnabledSetting(ComponentName(context, RestoreReceiver::class.java),
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+    }
+
     @Test fun prepareBackgroundAlarm() {
         loginFixture()
         val (snapshot, task) = fixture()
@@ -99,7 +111,10 @@ class SystemIntegrationTest {
 
     @Test fun clearTestFixture() {
         repo.store.clearAccount()
+        WorkManager.getInstance(context).cancelAllWork().result.get(5, TimeUnit.SECONDS)
         ReminderScheduler(context).cancel()
+        context.packageManager.setComponentEnabledSetting(ComponentName(context, RestoreReceiver::class.java),
+            PackageManager.COMPONENT_ENABLED_STATE_DEFAULT, PackageManager.DONT_KILL_APP)
         assertNull(repo.store.session())
     }
 }

@@ -1,10 +1,10 @@
 # 营期日程 · 安卓原生版
 
-使用 Kotlin / Jetpack Compose / Material 3，支持 Android 8.0 及以上。1.1.1 采用暖白与靛蓝界面、滑动周历、完成进度环和 Lucide 图标，保留阶段配色。任务圆圈采用细描边、轻按反馈和渐进勾线；完成后保留清晰标题，短暂过渡后更新待办列表。网站继续负责管理营期，安卓端查看全部阶段、勾选共享任务、打开资料并发送本机通知。
+使用 Kotlin / Jetpack Compose / Material 3，支持 Android 8.0 及以上。1.2.0 采用暖白与靛蓝界面、滑动周历、完成进度环和 Lucide 图标，保留阶段配色。勾选即时反馈，带轻回弹、圆环扩散和触感，任务淡出后列表自动补位。保存转到后台，同一任务保存时防重复提交，其他任务可继续勾选；失败时恢复已同步记录并提示。未确认状态只用于界面，提醒仍以已保存记录为准。网站继续负责管理营期，安卓端查看全部阶段、勾选共享任务、打开资料并发送本机通知。
 
 ## 安装到小米手机
 
-将 `artifacts/android/camp-schedule-1.1.1.apk` 发到手机，点击安装；如系统提示，允许当前文件管理器安装应用。安装后用网站相同的邮箱与密码登录。也可以点击「先看看应用」浏览明确标记的只读示例，示例不会写入团队数据库。
+将 `artifacts/android/camp-schedule-1.2.0.apk` 发到手机，点击安装；如系统提示，允许当前文件管理器安装应用。安装后用网站相同的邮箱与密码登录。也可以点击「先看看应用」浏览明确标记的只读示例，示例不会写入团队数据库。
 
 在「设置」中开启通知和精准提醒，发送一条测试通知。小米手机在自启动管理中开启「营期日程」，并根据实际需要将应用省电策略设为「无限制」。系统入口因 MIUI / HyperOS 版本而异，应用内提供设置入口和手工路径。
 
@@ -30,7 +30,7 @@ npm ci
 ```powershell
 node scripts/export-android-data.js --check
 .\android\gradlew.bat -p android testDebugUnitTest lintDebug assembleDebug
-adb install -r artifacts/android/camp-schedule-1.1.1.apk
+adb install -r artifacts/android/camp-schedule-1.2.0.apk
 ```
 
 修改 SOP 后需要重新打包 APK；营期开营日期、休息周和完成状态通过现有云端同步，无需重新打包。应用不包含 service role key，不需要新增后台服务或推送平台。
@@ -56,4 +56,4 @@ adb install -r artifacts/android/camp-schedule-1.1.1.apk
 - `ReminderScheduler.kt` 使用 AlarmManager；`SyncWorker.kt` 使用 WorkManager 做可延迟的联网同步。接收器恢复重启、升级和时间变化后的提醒。
 - `*Screen.kt` 与 `TaskDetail.kt` 使用 Material 3 原生组件和惰性列表。周历采用 [Kizitonwose Calendar 2.6.1](https://github.com/kizitonwose/Calendar)，MIT 许可。图标采用 [Lucide](https://github.com/lucide-icons/lucide) 官方 SVG 的固定提交，由 `scripts/sync-lucide-icons.ps1` 转为原生 VectorDrawable，采用 ISC / 原 Feather MIT 许可。两者许可随 APK 打包，可在「设置 → 开源许可」查看。Kotlin 和 Compose 编译插件统一为 2.0.21；Compose 运行库为 1.7.6。Jetpack 组件遵循 [AndroidX Apache 2.0 许可](https://github.com/androidx/androidx/blob/androidx-main/LICENSE.txt)。
 
-本地构建、模拟器验证结果与尚需真机检查的项目记录在 `docs/audits/2026-10-19-android.md`、`docs/audits/2026-10-20-android-ui.md` 和 `docs/audits/2026-10-20-android-completion.md`。
+本地构建、模拟器验证结果与尚需真机检查的项目记录在 `docs/audits/2026-10-19-android.md`、`docs/audits/2026-10-20-android-ui.md`、`docs/audits/2026-10-20-android-completion.md` 和 `docs/audits/2026-10-20-android-responsive-completion.md`。

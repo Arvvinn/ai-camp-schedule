@@ -89,6 +89,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
                 TextButton(onClick = signOut, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("登录", fontSize = 12.sp) }
             }
             state.loggedIn -> {
+                if (state.pendingCompletions.isNotEmpty()) Text("保存中 ${state.pendingCompletions.size}", color = Muted, fontSize = 10.sp)
                 AppIcon(if (state.online) Glyph.Cloud else Glyph.Offline, modifier = Modifier.size(15.dp), tint = if (state.online) Sage else Amber)
                 IconButton(onClick = refresh, enabled = !state.busy, modifier = Modifier.size(40.dp)) { AppIcon(Glyph.Refresh, "刷新排期", modifier = Modifier.size(18.dp), tint = Blue) }
             }

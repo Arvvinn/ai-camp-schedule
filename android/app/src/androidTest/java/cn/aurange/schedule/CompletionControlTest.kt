@@ -54,7 +54,15 @@ class CompletionControlTest {
             node(description)?.let { return it }
             Thread.sleep(50)
         }
-        error("Completion control not exposed to accessibility: $description")
+        val labels = mutableListOf<String>()
+        fun describe(current: AccessibilityNodeInfo) {
+            if (!current.text.isNullOrEmpty() || !current.contentDescription.isNullOrEmpty()) {
+                labels += "${current.text} / ${current.contentDescription}"
+            }
+            for (index in 0 until current.childCount) current.getChild(index)?.let(::describe)
+        }
+        instrumentation.uiAutomation.rootInActiveWindow?.let(::describe)
+        error("Completion control not exposed to accessibility: $description; visible=$labels")
     }
 
     @Test fun completionAndRestoreDoNotOpenTaskDetails() {
