@@ -6,10 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -22,12 +20,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -86,17 +81,11 @@ val weekDay: DateTimeFormatter = DateTimeFormatter.ofPattern("E", Locale.CHINA)
 
 @Composable fun TaskCard(task: TaskOccurrence, completed: Boolean, canEdit: Boolean, overdue: Boolean,
                         onClick: () -> Unit, onComplete: () -> Unit) {
-    val background by animateColorAsState(if (completed) Color(0xFFF3F2EF) else Color.White, tween(180), label = "task-color")
+    val background by animateColorAsState(if (completed) Color(0xFFFBFAFE) else Color.White, tween(180), label = "task-color")
     Surface(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable(onClick = onClick), color = background,
         shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, if (overdue && !completed) Color(0xFFF0DDD2) else Line.copy(alpha = .65f))) {
         Row(Modifier.padding(start = 8.dp, end = 15.dp, top = 12.dp, bottom = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(46.dp).semantics { contentDescription = if (completed) "取消完成" else "标记完成" }
-                .toggleable(value = completed, enabled = canEdit, role = Role.Checkbox, onValueChange = { onComplete() }), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(21.dp).clip(CircleShape).background(if (completed) Sage else Color.Transparent)
-                    .border(if (completed) 0.dp else 1.4.dp, if (completed) Sage else Color(0xFFD6D2E0), CircleShape), contentAlignment = Alignment.Center) {
-                    if (completed) AppIcon(Glyph.Check, modifier = Modifier.size(14.dp), tint = Color.White)
-                }
-            }
+            TaskCompletionControl(completed, canEdit, onComplete)
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(Modifier.size(5.dp).background(phaseColor(task.phase.type), CircleShape))
@@ -106,7 +95,7 @@ val weekDay: DateTimeFormatter = DateTimeFormatter.ofPattern("E", Locale.CHINA)
                         fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
                 Text(task.template.title, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold,
-                    color = if (completed) Muted else Ink, textDecoration = if (completed) TextDecoration.LineThrough else TextDecoration.None,
+                    color = if (completed) Navy else Ink,
                     maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp))
                 if (task.template.description.isNotEmpty()) Text(task.template.description, fontSize = 11.sp, lineHeight = 18.sp,
                     color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))

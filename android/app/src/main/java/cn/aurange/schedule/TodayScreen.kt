@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -33,10 +34,15 @@ import java.util.Locale
     val filter = TaskFilter.valueOf(filterName)
     val date = LocalDate.parse(selectedDate)
     val tasks = remember(state.snapshot, date) { engine.today(state.snapshot, date) }
+    // Keep a confirmed task in its old position just long enough to draw the check.
+    // Status/counts use live state; only grouping/removal waits for the animation.
+    val presentation = rememberCompletionPresentation(state.snapshot)
+    val shownTasks = remember(presentation, date) { engine.today(presentation, date) }
     val completedIds = remember(state.snapshot) { state.snapshot.tasks.filterValues { it.completed }.keys }
+    val groupedCompletedIds = remember(presentation) { presentation.tasks.filterValues { it.completed }.keys }
     val completed = tasks.count { it.id in completedIds }
     val unfinished = tasks.size - completed
-    val groups = remember(tasks, date, completedIds, filter) { taskGroups(tasks, date, completedIds, filter) }
+    val groups = remember(shownTasks, date, groupedCompletedIds, filter) { taskGroups(shownTasks, date, groupedCompletedIds, filter) }
     val canEdit = state.online && !state.demo && !state.busy
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
@@ -131,4 +137,17 @@ import java.util.Locale
             DatePicker(picker, title = { Text("选择日程日期", modifier = Modifier.padding(24.dp)) }, showModeToggle = false)
         }
     }
+}
+
+@Composable
+private fun rememberCompletionPresentation(snapshot: Snapshot): Snapshot {
+    var displayed by remember { mutableStateOf(snapshot) }
+    LaunchedEffect(snapshot) {
+        if (displayed.camps == snapshot.camps &&
+            displayed.tasks.filterValues { it.completed }.keys != snapshot.tasks.filterValues { it.completed }.keys) {
+            delay(240)
+        }
+        displayed = snapshot
+    }
+    return displayed
 }
