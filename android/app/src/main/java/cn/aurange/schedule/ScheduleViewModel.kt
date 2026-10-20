@@ -77,7 +77,11 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         if (active?.isActive == true) return
         val today = LocalDate.now(BUSINESS_ZONE)
         val sunday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
-        val snapshot = Snapshot(listOf(Camp("demo-1", 8, sunday.minusWeeks(6)), Camp("demo-2", 9, sunday.plusWeeks(2))))
+        val sample = Snapshot(listOf(Camp("demo-1", 8, sunday.minusWeeks(6)), Camp("demo-2", 9, sunday.plusWeeks(2))))
+        val completed = engine.today(sample, today)
+            .filter { !it.template.follow && (it.template.day == "all" || it.date == today) }.take(2)
+            .associate { it.id to TaskState(true, 1) }
+        val snapshot = sample.copy(tasks = completed)
         repo.store.demo(true)
         mutableState.value = AppState(snapshot, demo = true, settings = repo.store.settings(), today = today)
     }

@@ -1,113 +1,128 @@
 package cn.aurange.schedule
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import java.time.ZoneOffset
-import java.time.DayOfWeek
-import java.time.temporal.TemporalAdjusters
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun TodayScreen(state: AppState, engine: ScheduleEngine, onTask: (TaskOccurrence) -> Unit,
                             onComplete: (TaskOccurrence) -> Unit) {
     var selectedDate by rememberSaveable(state.today.toString()) { mutableStateOf(state.today.toString()) }
     var showCalendar by remember { mutableStateOf(false) }
-    var showCompleted by rememberSaveable { mutableStateOf(true) }
+    var filterName by rememberSaveable { mutableStateOf(TaskFilter.ALL.name) }
+    val filter = TaskFilter.valueOf(filterName)
     val date = LocalDate.parse(selectedDate)
-    val monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     val tasks = remember(state.snapshot, date) { engine.today(state.snapshot, date) }
-    val unfinished = tasks.count { !engine.complete(state.snapshot, it) }
-    val completed = tasks.size - unfinished
-    val visible = tasks.filter { showCompleted || !engine.complete(state.snapshot, it) }
+    val completedIds = remember(state.snapshot) { state.snapshot.tasks.filterValues { it.completed }.keys }
+    val completed = tasks.count { it.id in completedIds }
+    val unfinished = tasks.size - completed
+    val groups = remember(tasks, date, completedIds, filter) { taskGroups(tasks, date, completedIds, filter) }
     val canEdit = state.online && !state.demo && !state.busy
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            SectionTitle(if (date == state.today) "今天的安排" else date.format(shortDate) + "的安排",
-                "按营期推进，把重要的事逐项完成。") {
-                TextButton(onClick = { showCalendar = true }) { Text("选日期", fontSize = 12.sp) }
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (n in 0L..6L) {
-                    val day = monday.plusDays(n)
-                    val selected = day == date
-                    Surface(Modifier.weight(1f).clickable { selectedDate = day.toString() },
-                        color = if (selected) Navy else Color.White, shape = RoundedCornerShape(12.dp),
-                        border = if (selected) null else BorderStroke(1.dp, Line)) {
-                        Column(Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(day.format(weekDay).replace("周", ""), color = if (selected) Color(0xFFCBD5E1) else Muted, fontSize = 11.sp)
-                            Text("${day.dayOfMonth}", color = if (selected) Color.White else Ink, fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 5.dp))
-                            Text(if (day == state.today) "今天" else " ", color = if (selected) Color(0xFFFBBF24) else Blue,
-                                fontSize = 9.sp, modifier = Modifier.padding(top = 3.dp))
-                        }
-                    }
+            Row(Modifier.fillMaxWidth().padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(if (date == state.today) "今天的安排" else date.format(shortDate), style = MaterialTheme.typography.headlineMedium)
+                    Text(date.format(DateTimeFormatter.ofPattern("M月d日 · EEEE", Locale.CHINA)), color = Muted,
+                        fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
+                }
+                if (date != state.today) TextButton(onClick = { selectedDate = state.today.toString() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("今天", fontSize = 11.sp) }
+                OutlinedIconButton(onClick = { showCalendar = true }, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Line)) {
+                    AppIcon(Glyph.Calendar, "选择日期", tint = Ink)
                 }
             }
         }
         item {
-            Surface(color = Color.White, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFFFDE68A))) {
-                Column {
-                    Surface(color = Amber, modifier = Modifier.fillMaxWidth().height(3.dp)) {}
-                    Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("待处理", fontSize = 12.sp, color = Muted)
-                            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text("$unfinished", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = Ink)
-                                Text("项", fontSize = 12.sp, color = Muted, modifier = Modifier.padding(bottom = 6.dp))
+            Surface(shape = RoundedCornerShape(24.dp), color = Blue, shadowElevation = 2.dp) {
+                Row(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFF7169E5), Color(0xFF524BC7))))
+                    .padding(horizontal = 22.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            AppIcon(Glyph.Sparkles, modifier = Modifier.size(14.dp), tint = Color(0xFFDDD9FF))
+                            Text(if (date == state.today) "今日待办" else "当日待办", fontSize = 11.sp, color = Color(0xFFE3DFFF))
+                        }
+                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Text("$unfinished", fontSize = 39.sp, lineHeight = 47.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("项待处理", color = Color(0xFFE3DFFF), fontSize = 11.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        }
+                        Text("已完成 $completed 项  ·  跟进 ${tasks.count { it.template.follow }} 项", fontSize = 10.sp, color = Color(0xFFE3DFFF), modifier = Modifier.padding(top = 5.dp))
+                    }
+                    CompletionRing(completed, tasks.size, onDark = true)
+                }
+            }
+        }
+        item {
+            Surface(color = Color.White, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, Line.copy(alpha = .6f))) {
+                Box(Modifier.padding(horizontal = 7.dp, vertical = 9.dp)) { WeekDateStrip(date, state.today) { selectedDate = it.toString() } }
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("我的日程", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFEFEDE9)) {
+                    Row(Modifier.padding(3.dp)) {
+                        TaskFilter.entries.forEach { option ->
+                            Box(Modifier.clip(RoundedCornerShape(9.dp)).background(if (filter == option) Color.White else Color.Transparent)
+                                .selectable(filter == option, role = Role.Tab, onClick = { filterName = option.name })
+                                .padding(horizontal = 11.dp, vertical = 8.dp)) {
+                                Text(option.label, color = if (filter == option) Blue else Muted, fontSize = 11.sp,
+                                    fontWeight = if (filter == option) FontWeight.SemiBold else FontWeight.Normal)
                             }
                         }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("已完成 $completed / ${tasks.size}", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = phaseColor("regular"))
-                            Text("持续跟进 ${tasks.count { it.template.follow }} 项", fontSize = 11.sp, color = Muted, modifier = Modifier.padding(top = 8.dp))
-                        }
                     }
                 }
-            }
-        }
-        item {
-            SectionTitle("待办清单", if (date == state.today) "含本周逾期和持续跟进事项" else "按当前完成状态预览该日日程") {
-                TextButton(onClick = { showCompleted = !showCompleted }) { Text(if (showCompleted) "隐藏已完成" else "显示已完成", fontSize = 11.sp) }
             }
         }
         if (state.snapshot.camps.isEmpty()) item {
-            EmptyCard("还没有营期", "登录后同步团队排期；可以在网页版添加或管理营期。")
-        } else if (visible.isEmpty()) item {
-            EmptyCard(if (tasks.isNotEmpty()) "待办已全部完成" else "这一天暂无待办", "可到「营期」查看各周安排与相关资料。")
+            EmptyCard("还没有营期", "同步团队排期后，就能在这里查看每天的安排。")
+        } else if (groups.isEmpty()) item {
+            EmptyCard(when (filter) { TaskFilter.COMPLETED -> "还没有已完成的事项"; TaskFilter.PENDING -> "待办已全部完成"; else -> "这一天暂无待办" },
+                if (filter == TaskFilter.COMPLETED) "完成当天待办后，会在这里显示。" else "到「营期」查看各周安排与相关资料。")
         }
-        items(visible, key = { it.id }) { task ->
-            Surface(color = Color.White, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Line)) {
-                Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    Row(Modifier.padding(start = 8.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PhaseBadge(task.phase)
-                        if (isOverdue(task, date)) Text(task.date.format(shortDate), fontSize = 11.sp, color = Muted,
-                            modifier = Modifier.padding(top = 4.dp))
-                    }
-                    TaskRow(task, engine.complete(state.snapshot, task), canEdit, isOverdue(task, date),
-                        { onTask(task) }, { onComplete(task) })
+        for (group in groups) {
+            item(key = "group-${group.bucket.name}") {
+                val accent = when (group.bucket) { TaskBucket.OVERDUE -> Amber; TaskBucket.FOLLOW -> phaseColor("prep"); TaskBucket.COMPLETED -> Sage; else -> Muted }
+                Row(Modifier.padding(top = 5.dp, start = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Box(Modifier.width(3.dp).height(12.dp).background(accent, RoundedCornerShape(2.dp)))
+                    Text(group.bucket.label, fontSize = 12.sp, color = accent, fontWeight = FontWeight.SemiBold)
+                    Text("${group.tasks.size}", fontSize = 11.sp, color = Muted)
                 }
             }
+            items(group.tasks, key = { it.id }) { task ->
+                TaskCard(task, task.id in completedIds, canEdit, isOverdue(task, date), { onTask(task) }, { onComplete(task) })
+            }
         }
-        item { Text("提醒以北京时间为准 · 模糊时间任务可在详情中单独设提醒", color = Muted, fontSize = 10.sp,
-            lineHeight = 17.sp, modifier = Modifier.padding(vertical = 8.dp)) }
+        item {
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                AppIcon(Glyph.Clock, modifier = Modifier.size(12.dp), tint = Muted.copy(alpha = .7f))
+                Text("  北京时间 · 点击任务查看详情", fontSize = 10.sp, color = Muted.copy(alpha = .8f))
+            }
+        }
     }
     if (showCalendar) {
-        val picker = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
+        val picker = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(), yearRange = 2000..2100)
         DatePickerDialog(onDismissRequest = { showCalendar = false }, confirmButton = {
             TextButton(onClick = { picker.selectedDateMillis?.let {
                 selectedDate = java.time.Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString()

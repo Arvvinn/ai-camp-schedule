@@ -40,10 +40,12 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Android verification/build failed.' }
     $outputDir = Join-Path $repoDir 'artifacts\android'
     New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
-    $apk = Join-Path $outputDir 'camp-schedule-1.0.0.apk'
+    $releaseMetadata = Get-Content -Raw -LiteralPath (Join-Path $projectDir 'app\build\outputs\apk\release\output-metadata.json') | ConvertFrom-Json
+    $apkName = "camp-schedule-$($releaseMetadata.elements[0].versionName).apk"
+    $apk = Join-Path $outputDir $apkName
     Copy-Item -LiteralPath (Join-Path $projectDir 'app\build\outputs\apk\release\app-release.apk') -Destination $apk -Force
     $hash = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
-    "$hash  camp-schedule-1.0.0.apk" | Set-Content -LiteralPath (Join-Path $outputDir 'SHA256SUMS.txt') -Encoding ascii
+    "$hash  $apkName" | Set-Content -LiteralPath (Join-Path $outputDir 'SHA256SUMS.txt') -Encoding ascii
     Write-Output "APK: $apk"
     Write-Output "SHA-256: $hash"
 } finally { Pop-Location }

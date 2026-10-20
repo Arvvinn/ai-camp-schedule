@@ -1,10 +1,10 @@
 # 营期日程 · 安卓原生版
 
-使用 Kotlin / Jetpack Compose / Material 3，支持 Android 8.0 及以上。界面沿用网站的深蓝、浅灰、白色卡片与阶段配色。网站继续负责管理营期，安卓端查看全部阶段、勾选共享任务、打开资料并发送本机通知。
+使用 Kotlin / Jetpack Compose / Material 3，支持 Android 8.0 及以上。1.1.0 采用暖白与靛蓝界面、滑动周历、完成进度环和 Lucide 图标，保留阶段配色。网站继续负责管理营期，安卓端查看全部阶段、勾选共享任务、打开资料并发送本机通知。
 
 ## 安装到小米手机
 
-将 `artifacts/android/camp-schedule-1.0.0.apk` 发到手机，点击安装；如系统提示，允许当前文件管理器安装应用。安装后用网站相同的邮箱与密码登录。也可以点击「先看看应用」浏览明确标记的只读示例，示例不会写入团队数据库。
+将 `artifacts/android/camp-schedule-1.1.0.apk` 发到手机，点击安装；如系统提示，允许当前文件管理器安装应用。安装后用网站相同的邮箱与密码登录。也可以点击「先看看应用」浏览明确标记的只读示例，示例不会写入团队数据库。
 
 在「设置」中开启通知和精准提醒，发送一条测试通知。小米手机在自启动管理中开启「营期日程」，并根据实际需要将应用省电策略设为「无限制」。系统入口因 MIUI / HyperOS 版本而异，应用内提供设置入口和手工路径。
 
@@ -30,7 +30,7 @@ npm ci
 ```powershell
 node scripts/export-android-data.js --check
 .\android\gradlew.bat -p android testDebugUnitTest lintDebug assembleDebug
-adb install -r artifacts/android/camp-schedule-1.0.0.apk
+adb install -r artifacts/android/camp-schedule-1.1.0.apk
 ```
 
 修改 SOP 后需要重新打包 APK；营期开营日期、休息周和完成状态通过现有云端同步，无需重新打包。应用不包含 service role key，不需要新增后台服务或推送平台。
@@ -46,12 +46,14 @@ adb install -r artifacts/android/camp-schedule-1.0.0.apk
 
 此脚本仅允许 Android 模拟器，使用明确的测试夹具并清空测试应用账号；不会写入线上数据。它检查加密缓存、退出清理、权限撤销、登录过期、版本冲突、退出与同步竞争、通知点击路由，并在应用进程退出后等待实际系统闹钟通知。不得在存有真实账号数据的手机上运行这些测试夹具。
 
+安装调试版或 release 版后，可运行 `./scripts/verify-android-ui.ps1 -Device emulator-5554` 检查演示页面、周历滑动、日期保留、筛选、详情与设置；应先退出真实账号。脚本只接受模拟器，截图前会检查前台包名、UI 层级与崩溃日志，结果保存在 `artifacts/android/ui-redesign/`。
+
 ## 文件分工与组件来源
 
 - `scripts/export-android-data.js` 将网站内容导出为 `app/src/main/assets/schedule.json`，网站测试防止内容漂移。
 - `ScheduleEngine.kt` 与 `ReminderPlan.kt` 负责日期、稳定任务键、跟进和提醒计算。
 - `ScheduleRepository.kt` 使用 Supabase Auth、`my_app_access` 和现有版本化排期 RPC；`LocalStore.kt` 使用应用私有缓存和 Android Keystore AES-GCM 加密会话，退出时清除缓存与待发提醒。
 - `ReminderScheduler.kt` 使用 AlarmManager；`SyncWorker.kt` 使用 WorkManager 做可延迟的联网同步。接收器恢复重启、升级和时间变化后的提醒。
-- `*Screen.kt` 与 `TaskDetail.kt` 使用 Material 3 原生组件和惰性列表。参考 [Google Compose 官方示例](https://github.com/android/compose-samples)，第一版周日期条无需额外日历库。Jetpack 组件遵循 [AndroidX Apache 2.0 许可](https://github.com/androidx/androidx/blob/androidx-main/LICENSE.txt)。
+- `*Screen.kt` 与 `TaskDetail.kt` 使用 Material 3 原生组件和惰性列表。周历采用 [Kizitonwose Calendar 2.6.1](https://github.com/kizitonwose/Calendar)，MIT 许可。图标采用 [Lucide](https://github.com/lucide-icons/lucide) 官方 SVG 的固定提交，由 `scripts/sync-lucide-icons.ps1` 转为原生 VectorDrawable，采用 ISC / 原 Feather MIT 许可。两者许可随 APK 打包，可在「设置 → 开源许可」查看。Kotlin 和 Compose 编译插件统一为 2.0.21；Compose 运行库为 1.7.6。Jetpack 组件遵循 [AndroidX Apache 2.0 许可](https://github.com/androidx/androidx/blob/androidx-main/LICENSE.txt)。
 
-本地构建、模拟器验证结果与尚需真机检查的项目记录在 `docs/audits/2026-10-19-android.md`。
+本地构建、模拟器验证结果与尚需真机检查的项目记录在 `docs/audits/2026-10-19-android.md` 和 `docs/audits/2026-10-20-android-ui.md`。
