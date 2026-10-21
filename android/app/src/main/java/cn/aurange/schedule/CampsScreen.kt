@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,9 +52,9 @@ import androidx.compose.ui.unit.sp
     val progress by animateFloatAsState(if (tasks.isEmpty()) 0f else done.toFloat() / tasks.size, tween(250), label = "camp-progress")
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 60.dp, bottom = floatingContentBottom()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
-            Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("我的营期", style = MaterialTheme.typography.headlineMedium)
                     Text("${camps.size} 个营期 · ${camps.count { engine.current(it, state.today) != null }} 个进行中", fontSize = 12.sp, color = Muted, modifier = Modifier.padding(top = 6.dp))
@@ -64,7 +65,7 @@ import androidx.compose.ui.unit.sp
         }
         if (camps.isEmpty()) item { EmptyCard("暂无团队营期", "点击「添加营期」，设置开营日期后自动生成日程。") }
         item {
-            LazyRow(state = campScroll, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyRow(state = campScroll, modifier = Modifier.padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(camps, key = { it.id }) { c ->
                     val current = engine.current(c, state.today)
                     val selected = camp?.id == c.id
@@ -110,7 +111,8 @@ import androidx.compose.ui.unit.sp
                 val phaseIndex = phases.indexOf(phase).coerceAtLeast(0)
                 val phaseScroll = rememberLazyListState(initialFirstVisibleItemIndex = (phaseIndex - 2).coerceAtLeast(0))
                 LaunchedEffect(camp.id, phase.key) { phaseScroll.animateScrollToItem((phaseIndex - 2).coerceAtLeast(0)) }
-                LazyRow(state = phaseScroll, horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(vertical = 2.dp)) {
+                LazyRow(state = phaseScroll, modifier = Modifier.padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(vertical = 2.dp)) {
                     items(phases, key = { it.key }) { p ->
                         FilterChip(selected = phase.key == p.key, onClick = { selectedPhase = p.key }, label = { Text(p.short, fontSize = 12.sp) },
                             shape = RoundedCornerShape(11.dp), colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Blue,
@@ -124,11 +126,14 @@ import androidx.compose.ui.unit.sp
                 if (dayTasks.isEmpty()) continue
                 item(key = "${camp.id}-${phase.key}-$day-label") {
                     val label = if (day == "all") "全周 / 日常" else dayTasks.first().date.let { it.format(weekDay) + " · " + it.format(shortDate) }
-                    SectionTitle(label) { Text("${dayTasks.size} 项", fontSize = 12.sp, color = Muted) }
+                    Box(Modifier.padding(top = 16.dp, bottom = 10.dp)) {
+                        SectionTitle(label) { Text("${dayTasks.size} 项", fontSize = 12.sp, color = Muted) }
+                    }
                 }
-                items(dayTasks, key = { "camp:${it.id}" }) { task ->
+                itemsIndexed(dayTasks, key = { _, task -> "camp:${task.id}" }) { index, task ->
                     TaskCard(task, engine.complete(state.displaySnapshot, task), state.online && !state.busy && !state.demo && task.id !in state.pendingCompletions,
-                        isOverdue(task, state.today), { onTask(task) }, { onComplete(task) }, saving = task.id in state.pendingCompletions)
+                        isOverdue(task, state.today), { onTask(task) }, { onComplete(task) }, saving = task.id in state.pendingCompletions,
+                        firstInGroup = index == 0, lastInGroup = index == dayTasks.lastIndex)
                 }
             }
         }

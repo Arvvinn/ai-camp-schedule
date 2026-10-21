@@ -72,7 +72,9 @@ import dev.chrisbanes.haze.haze
                 Crossfade(tab, modifier = Modifier.weight(1f), animationSpec = tween(160), label = "page") { page ->
                     savedScreens.SaveableStateProvider(page) {
                         when (page) {
-                            0 -> TodayScreen(state, engine, { selectedTask = it.id }, model::complete)
+                            0 -> TodayScreen(state, engine, { selectedTask = it.id }, model::complete) {
+                                AppStatus(state, haze, model::refresh, model::signOut, Modifier, glass = false)
+                            }
                             1 -> CampsScreen(state, engine, { selectedTask = it.id }, model::complete, model::createCamp, model::refresh)
                             2 -> SettingsScreen(state, model, permissionVersion, askNotifications)
                         }
@@ -81,7 +83,7 @@ import dev.chrisbanes.haze.haze
             } else LoginScreen(state, model)
         }
         if (state.loggedIn || state.demo) {
-            AppStatus(state, haze, model::refresh, model::signOut, Modifier.align(Alignment.TopEnd).statusBarsPadding()
+            if (tab != 0) AppStatus(state, haze, model::refresh, model::signOut, Modifier.align(Alignment.TopEnd).statusBarsPadding()
                 .padding(end = 20.dp, top = 5.dp))
             AppNavigation(tab, haze, Modifier.align(Alignment.BottomCenter)) { tab = it }
         }
@@ -90,8 +92,9 @@ import dev.chrisbanes.haze.haze
     selectedTask?.let { id -> tasks[id]?.let { task -> TaskDetail(task, state, model, onDismiss = { selectedTask = null }) } }
 }
 
-@Composable private fun AppStatus(state: AppState, haze: HazeState, refresh: () -> Unit, signOut: () -> Unit, modifier: Modifier) {
-    GlassSurface(haze, modifier, corner = 22) {
+@Composable private fun AppStatus(state: AppState, haze: HazeState, refresh: () -> Unit, signOut: () -> Unit,
+                                 modifier: Modifier, glass: Boolean = true) {
+    val content: @Composable () -> Unit = {
       Row(Modifier.padding(start = 12.dp, end = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
         when {
@@ -107,6 +110,9 @@ import dev.chrisbanes.haze.haze
         }
       }
     }
+    // The inline header belongs to the captured scrolling source. Only sibling overlays sample it.
+    if (glass) GlassSurface(haze, modifier, corner = 22) { content() }
+    else Surface(modifier, shape = RoundedCornerShape(22.dp), color = Color.White) { content() }
 }
 
 @Composable private fun OfflineBanner(state: AppState) {

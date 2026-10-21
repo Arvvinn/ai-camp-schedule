@@ -56,27 +56,36 @@ val weekDay: DateTimeFormatter = DateTimeFormatter.ofPattern("E", Locale.CHINA)
 }
 
 @Composable fun TaskCard(task: TaskOccurrence, completed: Boolean, canEdit: Boolean, overdue: Boolean,
-                        onClick: () -> Unit, onComplete: () -> Unit, saving: Boolean = false) {
+                        onClick: () -> Unit, onComplete: () -> Unit, saving: Boolean = false,
+                        firstInGroup: Boolean = true, lastInGroup: Boolean = true) {
     val background by animateColorAsState(if (completed) Color(0xFFF4F6F8) else Color.White, tween(180), label = "task-color")
-    Surface(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick), color = background,
-        shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, if (overdue && !completed) Color(0xFFF0C7C1) else Line)) {
-        Row(Modifier.padding(start = 6.dp, end = 14.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-            TaskCompletionControl(completed, canEdit, onComplete, saving)
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(Modifier.size(5.dp).background(phaseColor(task.phase.type), CircleShape))
-                    Text("第${task.camp.term}期 · ${task.phase.label}", fontSize = 12.sp, color = Muted, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    if (task.template.time.isNotEmpty()) Text(task.template.time, fontSize = 12.sp, color = if (overdue && !completed) Danger else Blue,
-                        fontWeight = FontWeight.SemiBold, maxLines = 1)
+    val shape = RoundedCornerShape(topStart = if (firstInGroup) 18.dp else 0.dp,
+        topEnd = if (firstInGroup) 18.dp else 0.dp,
+        bottomStart = if (lastInGroup) 18.dp else 0.dp, bottomEnd = if (lastInGroup) 18.dp else 0.dp)
+    Surface(Modifier.fillMaxWidth().clip(shape).clickable(onClick = onClick), color = background, shape = shape) {
+        Column {
+            Row(Modifier.padding(start = 6.dp, end = 16.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.Top) {
+                TaskCompletionControl(completed, canEdit, onComplete, saving)
+                Column(Modifier.weight(1f).padding(top = 11.dp)) {
+                    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(task.template.title, fontSize = 15.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
+                            color = if (completed) Navy else Ink, modifier = Modifier.weight(1f),
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        if (task.template.links.isNotEmpty()) AppIcon(Glyph.ArrowUpRight,
+                            modifier = Modifier.padding(top = 4.dp).size(15.dp), tint = Muted)
+                    }
+                    if (task.template.description.isNotEmpty()) Text(task.template.description, fontSize = 13.sp, lineHeight = 21.sp,
+                        color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(Modifier.size(5.dp).background(phaseColor(task.phase.type), CircleShape))
+                        Text("第${task.camp.term}期 · ${task.phase.label}", fontSize = 12.sp, color = Muted, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        if (task.template.time.isNotEmpty()) Text(task.template.time, fontSize = 12.sp,
+                            color = if (overdue && !completed) Danger else Blue, fontWeight = FontWeight.Medium, maxLines = 1)
+                    }
                 }
-                Text(task.template.title, fontSize = 15.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium,
-                    color = if (completed) Navy else Ink,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp))
-                if (task.template.description.isNotEmpty()) Text(task.template.description, fontSize = 13.sp, lineHeight = 21.sp,
-                    color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
             }
-            if (task.template.links.isNotEmpty()) AppIcon(Glyph.ArrowUpRight, modifier = Modifier.padding(start = 8.dp).size(15.dp), tint = Muted.copy(alpha = .6f))
+            if (!lastInGroup) HorizontalDivider(Modifier.padding(start = 54.dp, end = 16.dp), color = Line.copy(alpha = .65f))
         }
     }
 }

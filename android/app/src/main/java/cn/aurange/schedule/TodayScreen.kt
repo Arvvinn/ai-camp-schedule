@@ -3,21 +3,16 @@ package cn.aurange.schedule
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,7 +24,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun TodayScreen(state: AppState, engine: ScheduleEngine, onTask: (TaskOccurrence) -> Unit,
-                            onComplete: (TaskOccurrence) -> Unit) {
+                            onComplete: (TaskOccurrence) -> Unit, status: @Composable () -> Unit = {}) {
     var selectedDate by rememberSaveable(state.today.toString()) { mutableStateOf(state.today.toString()) }
     var showCalendar by remember { mutableStateOf(false) }
     var filterName by rememberSaveable { mutableStateOf(TaskFilter.ALL.name) }
@@ -46,49 +41,42 @@ import java.util.Locale
     val groups = remember(shownTasks, date, groupedCompletedIds, filter) { taskGroups(shownTasks, date, groupedCompletedIds, filter) }
     val canEdit = state.online && !state.demo && !state.busy
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 60.dp, bottom = floatingContentBottom()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = floatingContentBottom()),
+        verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item {
-            Row(Modifier.fillMaxWidth().padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(if (date == state.today) "今天的安排" else date.format(shortDate), style = MaterialTheme.typography.headlineMedium)
-                        if (date == state.today) Text("Today", fontFamily = EditorialFont,
-                            fontSize = 19.sp, color = Blue, maxLines = 1)
-                    }
+            Column(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (date == state.today) "今天的安排" else date.format(shortDate),
+                        style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                    status()
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(date.format(DateTimeFormatter.ofPattern("M月d日 · EEEE", Locale.CHINA)), color = Muted,
-                        fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
-                }
-                if (date != state.today) TextButton(onClick = { selectedDate = state.today.toString() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("今天", fontSize = 12.sp) }
-                OutlinedIconButton(onClick = { showCalendar = true }, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Line)) {
-                    AppIcon(Glyph.Calendar, "选择日期", tint = Ink)
-                }
-            }
-        }
-        item {
-            TodaySummary(completed, tasks.size, tasks.count { isOverdue(it, date) && it.id !in completedIds },
-                tasks.count { it.template.follow && it.id !in completedIds })
-        }
-        item {
-            Surface(color = Color.White, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Line)) {
-                Box(Modifier.padding(horizontal = 7.dp, vertical = 9.dp)) { WeekDateStrip(date, state.today) { selectedDate = it.toString() } }
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("我的日程", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFE7EBF1)) {
-                    Row(Modifier.padding(3.dp)) {
-                        TaskFilter.entries.forEach { option ->
-                            Box(Modifier.clip(RoundedCornerShape(9.dp)).background(if (filter == option) Color.White else Color.Transparent)
-                                .selectable(filter == option, role = Role.Tab, onClick = { filterName = option.name })
-                                .padding(horizontal = 11.dp, vertical = 8.dp)) {
-                                Text(option.label, color = if (filter == option) Blue else Muted, fontSize = 12.sp,
-                                    fontWeight = if (filter == option) FontWeight.SemiBold else FontWeight.Normal)
-                            }
-                        }
+                        fontSize = 12.sp, modifier = Modifier.weight(1f))
+                    if (date == state.today) Text("Today", fontFamily = EditorialFont,
+                        fontSize = 19.sp, color = Blue, maxLines = 1)
+                    else TextButton(onClick = { selectedDate = state.today.toString() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("今天", fontSize = 12.sp) }
+                    OutlinedIconButton(onClick = { showCalendar = true }, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Line)) {
+                        AppIcon(Glyph.Calendar, "选择日期", tint = Ink)
                     }
                 }
+            }
+        }
+        item {
+            Surface(color = Color.White, shape = RoundedCornerShape(20.dp)) {
+                Column {
+                    TodaySummary(completed, tasks.size, tasks.count { isOverdue(it, date) && it.id !in completedIds },
+                        tasks.count { it.template.follow && it.id !in completedIds }, embedded = true)
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = Line.copy(alpha = .65f))
+                    Box(Modifier.padding(horizontal = 8.dp, vertical = 10.dp)) {
+                        WeekDateStrip(date, state.today) { selectedDate = it.toString() }
+                    }
+                }
+            }
+        }
+        item {
+            Box(Modifier.padding(top = 14.dp, bottom = 2.dp)) {
+                TaskFilterControl(filter) { filterName = it.name }
             }
         }
         if (state.snapshot.camps.isEmpty()) item {
@@ -100,17 +88,18 @@ import java.util.Locale
         for (group in groups) {
             item(key = "group-${group.bucket.name}") {
                 val accent = when (group.bucket) { TaskBucket.OVERDUE -> Amber; TaskBucket.FOLLOW -> phaseColor("prep"); TaskBucket.COMPLETED -> Sage; else -> Muted }
-                Row(Modifier.padding(top = 5.dp, start = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Box(Modifier.width(3.dp).height(12.dp).background(accent, RoundedCornerShape(2.dp)))
-                    Text(group.bucket.label, fontSize = 12.sp, color = accent, fontWeight = FontWeight.SemiBold)
-                    Text("${group.tasks.size}", fontSize = 12.sp, color = Muted)
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp, start = 3.dp, end = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text(group.bucket.label, fontSize = 13.sp, color = accent, fontWeight = FontWeight.Medium)
+                    Text("${group.tasks.size}", fontSize = 13.sp, color = Muted)
                 }
             }
-            items(group.tasks, key = { it.id }) { task ->
+            itemsIndexed(group.tasks, key = { _, task -> task.id }) { index, task ->
                 Box(Modifier.animateItem(fadeInSpec = tween(160), fadeOutSpec = tween(160),
                     placementSpec = spring(dampingRatio = .85f, stiffness = 500f))) {
                     TaskCard(task, task.id in completedIds, canEdit && task.id !in state.pendingCompletions,
-                        isOverdue(task, date), { onTask(task) }, { onComplete(task) }, saving = task.id in state.pendingCompletions)
+                        isOverdue(task, date), { onTask(task) }, { onComplete(task) }, saving = task.id in state.pendingCompletions,
+                        firstInGroup = index == 0, lastInGroup = index == group.tasks.lastIndex)
                 }
             }
         }
