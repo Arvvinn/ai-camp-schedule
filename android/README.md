@@ -8,7 +8,7 @@
 
 ## 安装到小米手机
 
-将 `artifacts/android/camp-schedule-1.5.0.apk` 发到手机，点击安装；如系统提示，允许当前文件管理器安装应用。安装后用网站相同的邮箱与密码登录。也可以点击「先看看应用」浏览明确标记的只读示例，示例不会写入团队数据库。
+当前 1.5.1 更新「批改文档模板」为用户确认的 AI 编程文档，其余 15 个入口保留。将 `artifacts/android/camp-schedule-1.5.1.apk` 发到手机，点击安装；如系统提示，允许当前文件管理器安装应用。安装后用网站相同的邮箱与密码登录。也可以点击「先看看应用」浏览明确标记的只读示例，示例不会写入团队数据库。
 
 在「设置」中开启通知和精准提醒，发送一条测试通知。小米手机在自启动管理中开启「营期日程」，并根据实际需要将应用省电策略设为「无限制」。系统入口因 MIUI / HyperOS 版本而异，应用内提供设置入口和手工路径。
 
@@ -34,7 +34,7 @@ npm ci
 ```powershell
 node scripts/export-android-data.js --check
 .\android\gradlew.bat -p android testDebugUnitTest lintDebug assembleDebug
-adb install -r artifacts/android/camp-schedule-1.5.0.apk
+adb install -r artifacts/android/camp-schedule-1.5.1.apk
 ```
 
 修改 SOP 后需要重新打包 APK；营期开营日期、休息周和完成状态通过现有云端同步，无需重新打包。应用不包含 service role key，不需要新增后台服务或推送平台。
