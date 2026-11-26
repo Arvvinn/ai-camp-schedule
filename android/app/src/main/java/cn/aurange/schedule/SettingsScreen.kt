@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalTime
 
-@Composable fun SettingsScreen(state: AppState, model: ScheduleViewModel, permissionVersion: Int, askNotifications: () -> Unit) {
+@Composable fun SettingsScreen(state: AppState, model: ScheduleViewModel, permissionVersion: Int, askNotifications: () -> Unit, issueModel: IssueCaptureViewModel) {
     val context = LocalContext.current
     val scheduler = remember { ReminderScheduler(context) }
     val notificationEnabled = remember(permissionVersion) { scheduler.canNotify() }
@@ -36,6 +36,7 @@ import java.time.LocalTime
             Text("偏好设置", style = MaterialTheme.typography.headlineMedium)
             Text("管理提醒和系统权限", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
         }
+        item { WhiteCard { IssueCaptureScreen(issueModel, configureOnly = true) } }
         item {
             WhiteCard {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -83,13 +84,13 @@ import java.time.LocalTime
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     AppIcon(if (state.demo) Glyph.Sparkles else Glyph.Shield, tint = Sage)
                     Column {
-                        Text(if (state.demo) "演示预览" else "已登录团队账号", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        Text(if (state.demo) "示例数据，仅供浏览" else state.email, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                        Text(if (state.demo) "演示预览" else if (state.loggedIn) "已登录团队账号" else "未登录团队账号", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text(if (state.demo) "示例数据，仅供浏览" else if (state.loggedIn) state.email else "随手记可独立使用，日程需要团队权限。", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
                 Text("已同步日程可离线查看和提醒。云端改动需联网同步后生效，打开应用可立即刷新。", color = Muted, fontSize = 12.sp, lineHeight = 20.sp)
                 Text("手机重启后会恢复提醒。系统强行停止应用后，请重新打开一次。", color = Muted, fontSize = 12.sp, lineHeight = 20.sp)
-                ActionRow(Glyph.Logout, if (state.demo) "退出演示，登录账号" else "退出登录") { if (!state.busy) confirmLogout = true }
+                if (state.loggedIn || state.demo) ActionRow(Glyph.Logout, if (state.demo) "退出演示，登录账号" else "退出登录") { if (!state.busy) confirmLogout = true }
             }
         }
         item {

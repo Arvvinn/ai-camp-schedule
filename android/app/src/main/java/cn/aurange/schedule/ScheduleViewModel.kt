@@ -22,7 +22,7 @@ data class AppState(
     val message: String = "", val settings: ReminderSettings = ReminderSettings(),
     val custom: Map<String, Long> = emptyMap(), val today: LocalDate = LocalDate.now(BUSINESS_ZONE),
     val pendingCompletions: Map<String, Boolean> = emptyMap(), val createdCampId: String? = null,
-    val campError: String = ""
+    val campError: String = "", val savedCampRevision: Int = 0
 ) {
     val displaySnapshot: Snapshot get() = if (pendingCompletions.isEmpty()) snapshot else snapshot.copy(
         tasks = snapshot.tasks + pendingCompletions.mapValues { (id, completed) -> TaskState(completed, snapshot.tasks[id]?.version ?: 0) })
@@ -105,18 +105,21 @@ class ScheduleViewModel @JvmOverloads constructor(application: Application,
         if (mutableState.value.today != date) mutableState.value = mutableState.value.copy(today = date)
         if (!mutableState.value.demo && mutableState.value.loggedIn && mutableState.value.pendingCompletions.isEmpty()) run { repo.refresh() }
     }
-    fun createCamp(draft: CampDraft) {
+    fun createCamp(draft: CampDraft) = saveCamp(draft)
+
+    fun saveCamp(draft: CampDraft, original: Camp? = null) {
         val current = mutableState.value
         if (current.demo || !current.loggedIn || !current.online || current.busy) return
-        draft.error(current.snapshot.camps)?.let { message(it); return }
+        draft.error(current.snapshot.camps, original)?.let { message(it); return }
         mutableState.value = current.copy(campError = "")
         run(onSuccess = { snapshot ->
             mutableState.value = mutableState.value.copy(createdCampId = snapshot.camps.first { it.term == draft.term }.id,
-                campError = "", message = "第 ${draft.term} 期已添加，日程和提醒已按开营日期安排。")
+                campError = "", savedCampRevision = mutableState.value.savedCampRevision + 1,
+                message = "第 ${draft.term} 期已保存，日程和提醒已更新。")
         }, onFailure = { error ->
             mutableState.value = mutableState.value.copy(campError = friendlyError(error),
                 online = error is IllegalStateException && error.cause !is java.io.IOException)
-        }) { repo.createCamp(draft) }
+        }) { repo.createCamp(draft, original) }
     }
     fun complete(task: TaskOccurrence) {
         val state = mutableState.value

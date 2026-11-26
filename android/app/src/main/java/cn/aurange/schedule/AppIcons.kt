@@ -18,7 +18,7 @@ enum class Glyph(val drawable: Int) {
     Filter(R.drawable.ic_list_filter), CircleCheck(R.drawable.ic_circle_check), Flag(R.drawable.ic_flag), Repeat(R.drawable.ic_repeat),
     Shield(R.drawable.ic_shield_check), Zap(R.drawable.ic_zap), Phone(R.drawable.ic_smartphone), Battery(R.drawable.ic_battery_full),
     Logout(R.drawable.ic_log_out), Mail(R.drawable.ic_mail), Lock(R.drawable.ic_lock_keyhole), Eye(R.drawable.ic_eye),
-    EyeOff(R.drawable.ic_eye_off), Sparkles(R.drawable.ic_sparkles), Book(R.drawable.ic_book_open), Link(R.drawable.ic_link),
+    EyeOff(R.drawable.ic_eye_off), Sparkles(R.drawable.ic_sparkles), Book(R.drawable.ic_book_open), Note(R.drawable.ic_square_pen), Link(R.drawable.ic_link),
     Info(R.drawable.ic_info), External(R.drawable.ic_external_link), Back(R.drawable.ic_arrow_left), Coffee(R.drawable.ic_coffee)
 }
 

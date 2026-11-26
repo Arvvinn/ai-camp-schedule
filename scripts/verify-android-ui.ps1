@@ -88,7 +88,7 @@ $box = Bounds $task
 AdbChecked @('shell','input','tap',[string][int]($box[2]-100),[string][int](($box[1]+$box[3])/2)) | Out-Null
 ReadUi
 AssertText '本机提醒'
-AssertText '标记为已完成'
+AssertText '演示模式（只读）'
 Screenshot 'detail-verified'
 TapNode ($script:ui.SelectSingleNode('//node[@content-desc="收起任务"]'))
 TapText '设置'

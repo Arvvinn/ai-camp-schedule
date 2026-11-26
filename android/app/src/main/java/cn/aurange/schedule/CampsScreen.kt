@@ -25,14 +25,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable fun CampsScreen(state: AppState, engine: ScheduleEngine, onTask: (TaskOccurrence) -> Unit,
-                            onComplete: (TaskOccurrence) -> Unit, onAdd: (CampDraft) -> Unit = {}, onRefresh: () -> Unit = {}) {
+                            onComplete: (TaskOccurrence) -> Unit, onSaveCamp: (CampDraft, Camp?) -> Unit = { _, _ -> }, onRefresh: () -> Unit = {}) {
     var selectedCamp by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedPhase by rememberSaveable { mutableStateOf<String?>(null) }
-    var handledCampId by rememberSaveable { mutableStateOf<String?>(null) }
-    var adding by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(state.createdCampId) {
-        state.createdCampId?.takeIf { it != handledCampId }?.let {
-            selectedCamp = it; selectedPhase = null; adding = false; handledCampId = it
+    var handledRevision by rememberSaveable { mutableIntStateOf(0) }
+    var showCampSheet by remember { mutableStateOf(false) }
+    var editingCamp by remember { mutableStateOf<Camp?>(null) }
+    LaunchedEffect(state.savedCampRevision) {
+        if (state.savedCampRevision > handledRevision) {
+            selectedCamp = state.createdCampId
+            selectedPhase = null
+            showCampSheet = false
+            handledRevision = state.savedCampRevision
         }
     }
     val camps = remember(state.snapshot.camps, state.today) {
@@ -59,7 +63,7 @@ import androidx.compose.ui.unit.sp
                     Text("我的营期", style = MaterialTheme.typography.headlineMedium)
                     Text("${camps.size} 个营期 · ${camps.count { engine.current(it, state.today) != null }} 个进行中", fontSize = 12.sp, color = Muted, modifier = Modifier.padding(top = 6.dp))
                 }
-                FilledTonalButton(onClick = { adding = true }, enabled = state.online && !state.demo && !state.busy,
+                FilledTonalButton(onClick = { editingCamp = null; showCampSheet = true }, enabled = state.online && !state.demo && !state.busy,
                     contentPadding = PaddingValues(horizontal = 15.dp)) { Text("添加营期") }
             }
         }
@@ -97,6 +101,11 @@ import androidx.compose.ui.unit.sp
                         Box(Modifier.size(42.dp).background(phaseBackground(phase.type), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                             AppIcon(if (phase.type == "prep") Glyph.Book else if (phase.type == "rest") Glyph.Coffee else Glyph.Layers, tint = phaseColor(phase.type))
                         }
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("考试安排在第 ${camp.examWeek} 周", modifier = Modifier.weight(1f), color = Muted, fontSize = 12.sp)
+                        TextButton(onClick = { editingCamp = camp; showCampSheet = true },
+                            enabled = state.online && !state.demo && !state.busy) { Text("编辑营期") }
                     }
                     Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(4.dp)).background(phaseBackground(phase.type))) {
                         Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(phaseColor(phase.type)))
@@ -138,5 +147,8 @@ import androidx.compose.ui.unit.sp
             }
         }
     }
-    if (adding) AddCampSheet(state, { adding = false }, onAdd, onRefresh)
+    if (showCampSheet) {
+        val original = editingCamp
+        AddCampSheet(state, { showCampSheet = false }, { onSaveCamp(it, original) }, onRefresh, original)
+    }
 }

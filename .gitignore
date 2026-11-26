@@ -11,3 +11,11 @@ android/signing.properties
 *.jks
 *.keystore
 artifacts/android/
+local-sop/.state/
+local-sop/dist/
+.issue-local-state/
+artifacts/preview/
+artifacts/web-rich-intake/
+artifacts/github-project/
+/AI编程SOP/
+/docs/working-notes/

@@ -95,21 +95,30 @@ class ScheduleRepository internal constructor(context: Context,
     }
     suspend fun refresh(): Snapshot = withContext(Dispatchers.IO) { mutex.withLock { refreshLocked() } }
     suspend fun signOut() = withContext(Dispatchers.IO) { mutex.withLock { store.clearAccount() } }
-    suspend fun createCamp(draft: CampDraft): Snapshot = withContext(Dispatchers.IO) {
+    suspend fun createCamp(draft: CampDraft, original: Camp? = null): Snapshot = withContext(Dispatchers.IO) {
         mutex.withLock {
             try {
                 checkAccess()
-                draft.error(store.snapshot().camps)?.let { throw IllegalStateException(it) }
-                val saved = rpc("save_schedule_camp", JSONObject().put("p_program", "ai")
-                    .put("p_id", JSONObject.NULL).put("p_version", 0).put("p_term", draft.term)
-                    .put("p_open_date", draft.openDate.toString()).put("p_skips", JSONArray(draft.skips.sorted())))
+                draft.error(store.snapshot().camps, original)?.let { throw IllegalStateException(it) }
+                val parameters = JSONObject().put("p_program", "ai")
+                    .put("p_id", original?.id ?: JSONObject.NULL).put("p_version", original?.version ?: 0)
+                    .put("p_term", draft.term).put("p_open_date", draft.openDate.toString())
+                    .put("p_skips", JSONArray(draft.skips.sorted()))
+                if (draft.examWeek != 7 || (original?.examWeek ?: 7) != 7) parameters.put("p_exam_week", draft.examWeek)
+                val saved = rpc("save_schedule_camp", parameters)
                 val camp = NativeJson.snapshot(JSONObject().put("camps", JSONArray().put(saved))
                     .put("tasks", JSONArray()).toString()).camps.single()
-                // Cache the acknowledged insert directly: a later refresh failure must not invite duplicate submission.
+                // Cache the acknowledged save directly, even if a later refresh fails.
                 val cached = store.snapshot()
                 cached.copy(camps = cached.camps.filterNot { it.id == camp.id } + camp).also(store::snapshot)
             } catch (e: Exception) {
                 if (e is AccessDenied || e is LoginExpired) store.clearAccount()
+                if (e is CloudFailure && e.code == "P0001") {
+                    throw IllegalStateException("这期营期已被其他人修改，请刷新排期，再重新打开编辑。", e)
+                }
+                if (e is CloudFailure && e.code == "PGRST202" && draft.examWeek != 7) {
+                    throw IllegalStateException("团队数据库尚未启用自选考试周，请联系管理员更新。", e)
+                }
                 if (e is CloudFailure && e.code == "23505") {
                     throw IllegalStateException("第 ${draft.term} 期已存在，请刷新排期后换一个期数。")
                 }

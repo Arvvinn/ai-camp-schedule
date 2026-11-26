@@ -7,7 +7,7 @@ $assetDir = Join-Path $repoDir 'android\app\src\main\assets'
 $iconNames = @('sun','calendar-days','calendar-check','layers','sliders-horizontal','arrow-up-right','arrow-right',
     'chevron-left','chevron-right','chevron-down','check','clock','bell','refresh-cw','cloud-check','cloud-off',
     'list-filter','circle-check','flag','repeat','shield-check','zap','smartphone','battery-full','log-out',
-    'mail','lock-keyhole','eye','eye-off','sparkles','book-open','link','info','external-link','arrow-left','coffee')
+    'mail','lock-keyhole','eye','eye-off','sparkles','book-open','square-pen','link','info','external-link','arrow-left','coffee')
 $baseUrl = "https://raw.githubusercontent.com/lucide-icons/lucide/$revision"
 $assets = $iconNames | ForEach-Object -Parallel {
     $name = $_

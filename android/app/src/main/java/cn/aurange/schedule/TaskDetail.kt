@@ -22,7 +22,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun TaskDetail(task: TaskOccurrence, state: AppState, model: ScheduleViewModel, onDismiss: () -> Unit) {
+@Composable fun TaskDetail(task: TaskOccurrence, state: AppState, model: ScheduleViewModel, onDismiss: () -> Unit,
+                          onNote: ((String) -> Boolean)? = null) {
     val context = LocalContext.current
     val completed = model.engine.complete(state.displaySnapshot, task)
     val saving = task.id in state.pendingCompletions
@@ -41,7 +42,7 @@ import java.time.format.DateTimeFormatter
                 Text(task.template.title, style = MaterialTheme.typography.headlineMedium)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AppIcon(Glyph.Calendar, modifier = Modifier.size(15.dp), tint = Blue)
-                    val label = if (task.template.day == "all") "全周 / 日常" else task.date.format(DateTimeFormatter.ofPattern("M月d日 EEEE", java.util.Locale.CHINA))
+                    val label = if (task.template.day == "all" && task.phase.type != "tracking") "全周 / 日常" else task.date.format(DateTimeFormatter.ofPattern("M月d日 EEEE", java.util.Locale.CHINA))
                     Text(label + if (task.template.time.isNotEmpty()) " · ${task.template.time}" else "", fontSize = 12.sp, color = Muted)
                 }
                 if (task.template.description.isNotEmpty()) WhiteCard {
@@ -52,6 +53,11 @@ import java.time.format.DateTimeFormatter
                         Text("持续跟进，完成后移出每日待办", color = phaseColor("prep"), fontSize = 12.sp)
                     }
                 }
+                TaskScriptCards(task, model.engine)
+                if (onNote != null) TextButton(onClick = {
+                    val text = "${task.template.title}\n\n补充内容：\n\n来源：第${task.camp.term}期 · ${task.phase.label} · ${task.date}\n"
+                    if (!onNote(text)) detailMessage = "随手记正在处理，请稍后重试。"
+                }) { AppIcon(Glyph.Note, tint = Blue); Spacer(Modifier.width(8.dp)); Text("围绕这项任务记一条") }
                 val links = task.template.links.mapNotNull { model.repo.sop.links[it] }
                 if (links.isNotEmpty()) {
                     SectionTitle("相关资料")
@@ -95,8 +101,17 @@ import java.time.format.DateTimeFormatter
             Column(Modifier.background(Canvas).padding(horizontal = 22.dp, vertical = 12.dp)) {
                 Button(onClick = { model.complete(task) }, enabled = state.online && !state.demo && !state.busy && !saving,
                     modifier = Modifier.fillMaxWidth().height(49.dp), shape = RoundedCornerShape(15.dp)) {
-                    AppIcon(if (completed) Glyph.Repeat else Glyph.Check, tint = if (state.online && !state.demo && !state.busy) Color.White else Muted, modifier = Modifier.size(17.dp))
-                    Spacer(Modifier.width(8.dp)); Text(if (saving) "正在保存…" else if (completed) "恢复为未完成" else "标记为已完成")
+                    val locked = state.demo || !state.online || state.busy
+                    AppIcon(if (locked) Glyph.Lock else if (completed) Glyph.Repeat else Glyph.Check,
+                        tint = if (state.online && !state.demo && !state.busy) Color.White else Muted, modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(8.dp)); Text(when {
+                        saving -> "正在保存…"
+                        state.demo -> if (completed) "已完成 · 演示只读" else "演示模式（只读）"
+                        !state.online -> if (completed) "已完成 · 联网后可修改" else "联网后可标记完成"
+                        state.busy -> "同步中，请稍后操作"
+                        completed -> "恢复为未完成"
+                        else -> "标记为已完成"
+                    })
                 }
             }
         }
